@@ -1,0 +1,50 @@
+﻿name: workshare
+description: WorkShare - Materialverwaltung fuer Handwerker mit Firebase Live-Sync
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  firebase_core: ^3.8.0
+  firebase_auth: ^5.3.3
+  cloud_firestore: ^5.5.0
+  firebase_storage: ^12.3.6
+  provider: ^6.1.2
+  shared_preferences: ^2.3.2
+  intl: ^0.19.0
+  uuid: ^4.5.1
+  rxdart: ^0.28.0
+  pdf: ^3.11.1
+  printing: ^5.13.4
+  url_launcher: ^6.3.1
+  image_picker: ^1.1.2
+  camera: ^0.11.1
+  path_provider: ^2.1.5
+  flutter_image_compress: ^2.4.0
+  package_info_plus: ^8.1.1
+  http: ^1.2.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: assets/branding/icon.png
+  adaptive_icon_background: "#F0F3F7"
+  adaptive_icon_foreground: assets/branding/icon.png
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/seeds/catalog_entries.json
+    - assets/branding/icon.png
+

@@ -1,0 +1,7 @@
+﻿[
+  {"name": "Kabelkanal", "unit": "m", "category": "Elektro"},
+  {"name": "Kabelbinder", "unit": "Stk", "category": "Elektro"},
+  {"name": "Kartusche Silikon", "unit": "Stk", "category": "Dichtung"},
+  {"name": "Kupferrohr", "unit": "m", "category": "Sanitaer"},
+  {"name": "Klemmschelle", "unit": "Stk", "category": "Befestigung"}
+]

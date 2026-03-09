@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../core/app_config.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
+import '../services/app_update_service.dart';
 import '../services/firebase_service.dart';
+import '../utils/app_notice.dart';
+import '../utils/error_mapper.dart';
 import '../widgets/brand_logo.dart';
 import 'workgroups_screen.dart';
 
@@ -17,11 +22,75 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late final Future<PackageInfo> _packageInfoFuture;
+  final _updateService = AppUpdateService();
+  bool _checkingUpdate = false;
 
   @override
   void initState() {
     super.initState();
     _packageInfoFuture = PackageInfo.fromPlatform();
+  }
+
+  Future<void> _checkForAppUpdate() async {
+    if (_checkingUpdate) return;
+    setState(() => _checkingUpdate = true);
+    try {
+      final update = await _updateService.checkForUpdate();
+      if (!mounted) return;
+      if (update == null) {
+        showAppNotice(context, 'Keine neue Version gefunden.', type: AppNoticeType.info);
+        return;
+      }
+
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Update verfügbar'),
+          content: Text(
+            update.notes.isEmpty
+                ? 'Version ${update.version} steht bereit. Jetzt installieren?'
+                : 'Version ${update.version} steht bereit.\n\n${update.notes}',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Später'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final ok = await launchUrl(
+                  Uri.parse(update.apkUrl),
+                  mode: LaunchMode.externalApplication,
+                );
+                if (dialogContext.mounted) {
+                  Navigator.of(dialogContext).pop();
+                }
+                if (!ok && mounted) {
+                  showAppNotice(
+                    context,
+                    'APK-Link konnte nicht geöffnet werden.',
+                    type: AppNoticeType.error,
+                  );
+                }
+              },
+              child: const Text('Installieren'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showAppNotice(
+        context,
+        friendlyErrorMessage(e, fallback: 'Updateprüfung fehlgeschlagen.'),
+        type: AppNoticeType.error,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _checkingUpdate = false);
+      }
+    }
   }
 
   @override
@@ -115,7 +184,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   future: _packageInfoFuture,
                   builder: (context, snapshot) {
                     final versionText = snapshot.hasData
-                        ? '${snapshot.data!.version}+${snapshot.data!.buildNumber}'
+                        ? snapshot.data!.version
                         : 'Laedt...';
                     return ListTile(
                       leading: const Icon(Icons.info_outline),
@@ -125,12 +194,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                 ),
                 const Divider(height: 1),
-                const ListTile(
-                  leading: Icon(Icons.code_outlined),
-                  title: Text('Entwickler'),
-                  subtitle: Text('Daniel Delfser'),
-                ),
-                const Divider(height: 1),
+                if (AppConfig.otaEnabled) ...[
+                  ListTile(
+                    leading: _checkingUpdate
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.system_update_alt_outlined),
+                    title: const Text('Auf Update prüfen'),
+                    subtitle: const Text('Manuell prüfen und optional installieren'),
+                    onTap: _checkingUpdate ? null : _checkForAppUpdate,
+                  ),
+                  const Divider(height: 1),
+                ],
                 if (uid == null)
                   const ListTile(
                     leading: Icon(Icons.cloud_off_outlined),
@@ -184,6 +262,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: const Icon(Icons.logout),
             label: const Text('Logout'),
           ),
+          const SizedBox(height: 10),
+          Center(
+            child: Text(
+              'Entwickler: Daniel Delfser',
+              style: TextStyle(
+                fontSize: 10,
+                color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
         ],
       ),
     );

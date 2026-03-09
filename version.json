@@ -1,7 +1,7 @@
 {
-  "version": "1.0.1",
-  "buildNumber": 2,
-  "apkUrl": "https://ff-friesach.at/workshare/workshare-1.0.1.apk",
+  "version": "1.0.2",
+  "buildNumber": 3,
+  "apkUrl": "https://ff-friesach.at/workshare/workshare-1.0.2.apk",
   "mandatory": false,
-  "notes": "Bugfixes und Verbesserungen"
+  "notes": "Stabilitaet, Session-Handling und Update-Verbesserungen"
 }

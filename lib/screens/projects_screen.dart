@@ -1,13 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
-
-import '../core/app_config.dart';
 
 import '../models/enums.dart';
 import '../models/project.dart';
 import '../providers/auth_provider.dart';
-import '../services/app_update_service.dart';
 import '../services/project_service.dart';
 import '../utils/app_notice.dart';
 import '../utils/error_mapper.dart';
@@ -24,22 +20,9 @@ class ProjectsScreen extends StatefulWidget {
 
 class _ProjectsScreenState extends State<ProjectsScreen> {
   final _projectService = ProjectService();
-  final _updateService = AppUpdateService();
   final _searchCtrl = TextEditingController();
   bool _showArchived = false;
-  bool _updateCheckStarted = false;
   bool _isSearching = false;
-
-  
-  @override
-  void initState() {
-    super.initState();
-    if (AppConfig.otaEnabled) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _checkForAppUpdate(manual: false);
-      });
-    }
-  }
 
   @override
   void dispose() {
@@ -80,7 +63,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       if (!mounted) return;
       showAppNotice(
         context,
-        friendlyErrorMessage(e, fallback: 'Projektstatus konnte nicht geändert werden.'),
+        friendlyErrorMessage(e, fallback: 'Projektstatus konnte nicht geÃ¤ndert werden.'),
         type: AppNoticeType.error,
       );
     }
@@ -90,11 +73,11 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     final confirm = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('Projekt löschen?'),
-            content: const Text('Projekt und zugehörige Daten werden entfernt.'),
+            title: const Text('Projekt lÃ¶schen?'),
+            content: const Text('Projekt und zugehÃ¶rige Daten werden entfernt.'),
             actions: [
               TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Abbrechen')),
-              FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Löschen')),
+              FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('LÃ¶schen')),
             ],
           ),
         ) ??
@@ -105,12 +88,12 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     try {
       await _projectService.deleteProject(projectId);
       if (!mounted) return;
-      showAppNotice(context, 'Projekt gelöscht.', type: AppNoticeType.success);
+      showAppNotice(context, 'Projekt gelÃ¶scht.', type: AppNoticeType.success);
     } catch (e) {
       if (!mounted) return;
       showAppNotice(
         context,
-        friendlyErrorMessage(e, fallback: 'Projekt konnte nicht gelöscht werden.'),
+        friendlyErrorMessage(e, fallback: 'Projekt konnte nicht gelÃ¶scht werden.'),
         type: AppNoticeType.error,
       );
     }
@@ -206,71 +189,6 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       ctrl.dispose();
     }
   }
-
-    Future<void> _checkForAppUpdate({required bool manual}) async {
-    if (!manual && _updateCheckStarted) return;
-    _updateCheckStarted = true;
-
-    try {
-      final update = await _updateService.checkForUpdate();
-      if (!mounted) return;
-
-      if (update == null) {
-        if (manual) {
-          showAppNotice(context, 'Keine neue Version gefunden.', type: AppNoticeType.info);
-        }
-        return;
-      }
-
-      await showDialog<void>(
-        context: context,
-        barrierDismissible: !update.mandatory,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Update verfügbar'),
-          content: Text(
-            update.notes.isEmpty
-                ? 'Version ${update.version} steht bereit. Jetzt installieren?'
-                : 'Version ${update.version} steht bereit.\n\n${update.notes}',
-          ),
-          actions: [
-            if (!update.mandatory)
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('Später'),
-              ),
-            FilledButton(
-              onPressed: () async {
-                final ok = await launchUrl(
-                  Uri.parse(update.apkUrl),
-                  mode: LaunchMode.externalApplication,
-                );
-                if (dialogContext.mounted) {
-                  Navigator.of(dialogContext).pop();
-                }
-                if (!ok && mounted) {
-                  showAppNotice(
-                    context,
-                    'APK-Link konnte nicht geöffnet werden.',
-                    type: AppNoticeType.error,
-                  );
-                }
-              },
-              child: const Text('Update installieren'),
-            ),
-          ],
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      if (manual) {
-        showAppNotice(
-          context,
-          friendlyErrorMessage(e, fallback: 'Updateprüfung fehlgeschlagen.'),
-          type: AppNoticeType.error,
-        );
-      }
-    }
-  }
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
@@ -300,12 +218,6 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               )
             : const WorkShareAppBarTitle('WorkShare'),
         actions: [
-          if (AppConfig.otaEnabled)
-            IconButton(
-              onPressed: () => _checkForAppUpdate(manual: true),
-              icon: const Icon(Icons.system_update_alt_outlined),
-              tooltip: 'Auf Updates prüfen',
-            ),
           IconButton(
             onPressed: () => _showJoinByCodeDialog(user.uid, user.email ?? ''),
             icon: const Icon(Icons.vpn_key_outlined),
@@ -321,7 +233,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               });
             },
             icon: Icon(_isSearching ? Icons.close : Icons.search),
-            tooltip: _isSearching ? 'Suche schließen' : 'Projekte suchen',
+            tooltip: _isSearching ? 'Suche schlieÃŸen' : 'Projekte suchen',
           ),
           const SizedBox(width: 12),
         ],
@@ -400,7 +312,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                       if (!canArchive) {
                         showAppNotice(
                           context,
-                          'Nur Owner/Admin dürfen Projekte archivieren.',
+                          'Nur Owner/Admin dÃ¼rfen Projekte archivieren.',
                           type: AppNoticeType.info,
                         );
                         return false;
@@ -414,7 +326,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                       } else {
                         showAppNotice(
                           context,
-                          'Für dieses Projekt ist keine Aktion erlaubt.',
+                          'FÃ¼r dieses Projekt ist keine Aktion erlaubt.',
                           type: AppNoticeType.info,
                         );
                         return false;
@@ -454,7 +366,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               Text(
-                                canDeleteProject ? 'Löschen' : 'Aus Liste entfernen',
+                                canDeleteProject ? 'LÃ¶schen' : 'Aus Liste entfernen',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w600,
@@ -505,7 +417,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                                 if (canDeleteProject)
                                   const PopupMenuItem<String>(
                                     value: 'delete',
-                                    child: Text('Projekt löschen'),
+                                    child: Text('Projekt lÃ¶schen'),
                                   ),
                                 if (canLeaveProject)
                                   const PopupMenuItem<String>(
@@ -584,3 +496,5 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     );
   }
 }
+
+

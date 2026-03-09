@@ -9,6 +9,46 @@ import 'catalog_entry_form_screen.dart';
 class CatalogScreen extends StatelessWidget {
   const CatalogScreen({super.key});
 
+  Future<void> _deleteEntry(
+    BuildContext context, {
+    required CatalogService service,
+    required String entryId,
+    required String entryName,
+  }) async {
+    final confirm = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Eintrag loeschen?'),
+            content: Text('Soll "$entryName" wirklich geloescht werden?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Abbrechen'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Loeschen'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirm) return;
+
+    try {
+      await service.deleteEntry(entryId);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Katalogeintrag geloescht.')),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Katalogeintrag konnte nicht geloescht werden.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final service = CatalogService();
@@ -47,13 +87,27 @@ class CatalogScreen extends StatelessWidget {
               return ListTile(
                 title: Text(e.name),
                 subtitle: Text('${e.unit}${e.category != null ? ' - ${e.category}' : ''}'),
-                trailing: IconButton(
-                  icon: const Icon(Icons.edit_outlined),
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => CatalogEntryFormScreen(entry: e)),
-                    );
-                  },
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => CatalogEntryFormScreen(entry: e)),
+                        );
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () => _deleteEntry(
+                        context,
+                        service: service,
+                        entryId: e.id,
+                        entryName: e.name,
+                      ),
+                    ),
+                  ],
                 ),
               );
             },

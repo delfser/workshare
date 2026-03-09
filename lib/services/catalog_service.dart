@@ -15,6 +15,14 @@ class SampleCatalogImportResult {
   final int skipped;
 }
 
+class SampleCatalogUnloadResult {
+  const SampleCatalogUnloadResult({
+    required this.removed,
+  });
+
+  final int removed;
+}
+
 class CatalogService {
   bool _isPermissionDenied(Object error) {
     return error is FirebaseException && error.code == 'permission-denied';
@@ -161,6 +169,7 @@ class CatalogService {
       'createdBy': createdBy,
       'workgroupId': (workgroupId == null || workgroupId.trim().isEmpty) ? null : workgroupId.trim(),
       'isActive': true,
+      'source': 'user',
       'createdAt': now,
       'updatedAt': now,
     });
@@ -228,6 +237,7 @@ class CatalogService {
         'createdBy': userId,
         'workgroupId': null,
         'isActive': true,
+        'source': 'sample',
         'createdAt': now,
         'updatedAt': now,
       });
@@ -247,5 +257,41 @@ class CatalogService {
     }
 
     return SampleCatalogImportResult(inserted: inserted, skipped: skipped);
+  }
+
+  Future<SampleCatalogUnloadResult> unloadFixedSampleCatalog({
+    required String userId,
+  }) async {
+    final snapshot = await FirebaseService.catalog
+        .where('createdBy', isEqualTo: userId)
+        .where('workgroupId', isEqualTo: null)
+        .where('source', isEqualTo: 'sample')
+        .get()
+        .timeout(const Duration(seconds: 15));
+
+    if (snapshot.docs.isEmpty) {
+      return const SampleCatalogUnloadResult(removed: 0);
+    }
+
+    WriteBatch batch = FirebaseService.db.batch();
+    var pending = 0;
+    var removed = 0;
+
+    for (final doc in snapshot.docs) {
+      batch.delete(doc.reference);
+      pending++;
+      removed++;
+      if (pending >= 450) {
+        await batch.commit().timeout(const Duration(seconds: 15));
+        batch = FirebaseService.db.batch();
+        pending = 0;
+      }
+    }
+
+    if (pending > 0) {
+      await batch.commit().timeout(const Duration(seconds: 15));
+    }
+
+    return SampleCatalogUnloadResult(removed: removed);
   }
 }

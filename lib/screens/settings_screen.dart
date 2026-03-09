@@ -27,6 +27,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _catalogService = CatalogService();
   bool _checkingUpdate = false;
   bool _loadingSampleCatalog = false;
+  bool _unloadingSampleCatalog = false;
 
   @override
   void initState() {
@@ -145,6 +146,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } finally {
       if (mounted) {
         setState(() => _loadingSampleCatalog = false);
+      }
+    }
+  }
+
+  Future<void> _unloadSampleCatalog() async {
+    final user = context.read<AuthProvider>().user;
+    if (user == null) {
+      showAppNotice(context, 'Bitte zuerst anmelden.', type: AppNoticeType.info);
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Beispielkatalog entladen?'),
+            content: const Text(
+              'Es werden nur importierte Beispiel-Eintraege entfernt. '
+              'Deine eigenen Katalogeintraege bleiben erhalten.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Abbrechen'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Entladen'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirm || !mounted) return;
+
+    setState(() => _unloadingSampleCatalog = true);
+    try {
+      final result = await _catalogService.unloadFixedSampleCatalog(userId: user.uid);
+      if (!mounted) return;
+      showAppNotice(
+        context,
+        'Beispielkatalog entladen: ${result.removed} entfernt.',
+        type: AppNoticeType.success,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showAppNotice(
+        context,
+        friendlyErrorMessage(e, fallback: 'Beispielkatalog konnte nicht entladen werden.'),
+        type: AppNoticeType.error,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _unloadingSampleCatalog = false);
       }
     }
   }
@@ -274,6 +328,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: const Text('Beispielkatalog laden'),
                   subtitle: const Text('Feste Vorlage einmalig importieren'),
                   onTap: _loadingSampleCatalog ? null : _loadSampleCatalog,
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: _unloadingSampleCatalog
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.playlist_remove_outlined),
+                  title: const Text('Beispielkatalog entladen'),
+                  subtitle: const Text('Nur importierte Beispiel-Eintraege entfernen'),
+                  onTap: _unloadingSampleCatalog ? null : _unloadSampleCatalog,
                 ),
                 const Divider(height: 1),
                 if (uid == null)

@@ -140,7 +140,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       if (!mounted) return;
       showAppNotice(
         context,
-        '$count Foto(s) lokal gespeichert. Upload lÃ¤uft im Hintergrund.',
+        '$count Foto(s) lokal gespeichert. Upload läuft im Hintergrund.',
         type: AppNoticeType.success,
       );
     } catch (e) {
@@ -524,12 +524,12 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                               try {
                                 await noteService.deleteNote(note.id);
                                 if (!mounted) return;
-                                showAppNotice(context, 'Notiz gelÃ¶scht.', type: AppNoticeType.success);
+                                showAppNotice(context, 'Notiz gelöscht.', type: AppNoticeType.success);
                               } catch (e) {
                                 if (!mounted) return;
                                 showAppNotice(
                                   context,
-                                  friendlyErrorMessage(e, fallback: 'Notiz konnte nicht gelÃ¶scht werden.'),
+                                  friendlyErrorMessage(e, fallback: 'Notiz konnte nicht gelöscht werden.'),
                                   type: AppNoticeType.error,
                                 );
                               }
@@ -579,12 +579,12 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                               try {
                                 await workLogService.deleteWorkLog(log.id);
                                 if (!mounted) return;
-                                showAppNotice(context, 'Arbeitszeit gelÃ¶scht.', type: AppNoticeType.success);
+                                showAppNotice(context, 'Arbeitszeit gelöscht.', type: AppNoticeType.success);
                               } catch (e) {
                                 if (!mounted) return;
                                 showAppNotice(
                                   context,
-                                  friendlyErrorMessage(e, fallback: 'Arbeitszeit konnte nicht gelÃ¶scht werden.'),
+                                  friendlyErrorMessage(e, fallback: 'Arbeitszeit konnte nicht gelöscht werden.'),
                                   type: AppNoticeType.error,
                                 );
                               }
@@ -717,7 +717,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                                       if (!mounted) return;
                                       showAppNotice(
                                         context,
-                                        friendlyErrorMessage(e, fallback: 'Foto konnte nicht gelÃ¶scht werden.'),
+                                        friendlyErrorMessage(e, fallback: 'Foto konnte nicht gelöscht werden.'),
                                         type: AppNoticeType.error,
                                       );
                                     }
@@ -821,12 +821,12 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                             try {
                               await materialService.deleteMaterial(item.id);
                               if (!mounted) return;
-                              showAppNotice(context, 'Material gelÃ¶scht.', type: AppNoticeType.success);
+                              showAppNotice(context, 'Material gelöscht.', type: AppNoticeType.success);
                             } catch (e) {
                               if (!mounted) return;
                               showAppNotice(
                                 context,
-                                friendlyErrorMessage(e, fallback: 'Material konnte nicht gelÃ¶scht werden.'),
+                                friendlyErrorMessage(e, fallback: 'Material konnte nicht gelöscht werden.'),
                                 type: AppNoticeType.error,
                               );
                             }

@@ -9,6 +9,8 @@ import '../models/project_photo.dart';
 import 'firebase_service.dart';
 
 class ProjectPhotoService {
+  static final Set<String> _activeUploads = <String>{};
+
   Stream<List<ProjectPhoto>> streamPhotos(String projectId) {
     return FirebaseService.projectPhotos
         .where('projectId', isEqualTo: projectId)
@@ -83,54 +85,60 @@ class ProjectPhotoService {
   }
 
   Future<void> _uploadQueuedPhoto(String photoId) async {
-    final docRef = FirebaseService.projectPhotos.doc(photoId);
-    final doc = await docRef.get().timeout(const Duration(seconds: 15));
-    if (!doc.exists || doc.data() == null) return;
-
-    final photo = ProjectPhoto.fromMap(doc.id, doc.data()!);
-    if (photo.uploadStatus == ProjectPhotoUploadStatus.uploaded) return;
-    if (photo.localPath.isEmpty) return;
-
-    final file = File(photo.localPath);
-    if (!file.existsSync()) {
-      await _markFailed(docRef, 'Lokale Datei nicht gefunden.');
-      return;
-    }
-
-    final extension = _safeExtension(file.path);
-    final storagePath = 'project_photos/${photo.projectId}/${photo.id}.$extension';
-    final ref = FirebaseService.storage.ref().child(storagePath);
-
-    await docRef.update({
-      'uploadStatus': ProjectPhotoUploadStatus.uploading.name,
-      'uploadProgress': 0.02,
-      'errorMessage': null,
-      'updatedAt': FirebaseService.now(),
-    }).timeout(const Duration(seconds: 15));
-
+    if (_activeUploads.contains(photoId)) return;
+    _activeUploads.add(photoId);
     try {
-      final task = ref.putFile(file);
-      await for (final event in task.snapshotEvents) {
-        final total = event.totalBytes <= 0 ? 1 : event.totalBytes;
-        final progress = (event.bytesTransferred / total).clamp(0, 1).toDouble();
-        await docRef.update({
-          'uploadStatus': ProjectPhotoUploadStatus.uploading.name,
-          'uploadProgress': progress,
-          'updatedAt': FirebaseService.now(),
-        }).timeout(const Duration(seconds: 15));
+      final docRef = FirebaseService.projectPhotos.doc(photoId);
+      final doc = await docRef.get().timeout(const Duration(seconds: 15));
+      if (!doc.exists || doc.data() == null) return;
+
+      final photo = ProjectPhoto.fromMap(doc.id, doc.data()!);
+      if (photo.uploadStatus == ProjectPhotoUploadStatus.uploaded) return;
+      if (photo.localPath.isEmpty) return;
+
+      final file = File(photo.localPath);
+      if (!file.existsSync()) {
+        await _markFailed(docRef, 'Lokale Datei nicht gefunden.');
+        return;
       }
 
-      final url = await ref.getDownloadURL();
+      final extension = _safeExtension(file.path);
+      final storagePath = 'project_photos/${photo.projectId}/${photo.id}.$extension';
+      final ref = FirebaseService.storage.ref().child(storagePath);
+
       await docRef.update({
-        'storagePath': storagePath,
-        'downloadUrl': url,
-        'uploadStatus': ProjectPhotoUploadStatus.uploaded.name,
-        'uploadProgress': 1,
+        'uploadStatus': ProjectPhotoUploadStatus.uploading.name,
+        'uploadProgress': 0.02,
         'errorMessage': null,
         'updatedAt': FirebaseService.now(),
       }).timeout(const Duration(seconds: 15));
-    } catch (e) {
-      await _markFailed(docRef, e.toString());
+
+      try {
+        final task = ref.putFile(file);
+        await for (final event in task.snapshotEvents) {
+          final total = event.totalBytes <= 0 ? 1 : event.totalBytes;
+          final progress = (event.bytesTransferred / total).clamp(0, 1).toDouble();
+          await docRef.update({
+            'uploadStatus': ProjectPhotoUploadStatus.uploading.name,
+            'uploadProgress': progress,
+            'updatedAt': FirebaseService.now(),
+          }).timeout(const Duration(seconds: 15));
+        }
+
+        final url = await ref.getDownloadURL();
+        await docRef.update({
+          'storagePath': storagePath,
+          'downloadUrl': url,
+          'uploadStatus': ProjectPhotoUploadStatus.uploaded.name,
+          'uploadProgress': 1,
+          'errorMessage': null,
+          'updatedAt': FirebaseService.now(),
+        }).timeout(const Duration(seconds: 15));
+      } catch (e) {
+        await _markFailed(docRef, e.toString());
+      }
+    } finally {
+      _activeUploads.remove(photoId);
     }
   }
 

@@ -24,6 +24,13 @@ class SampleCatalogUnloadResult {
 }
 
 class CatalogService {
+  Set<String> _sampleKeys() {
+    return {
+      for (final e in sampleCatalogEntries)
+        '${e.name.trim().toLowerCase()}|${e.unit.trim().toLowerCase()}',
+    };
+  }
+
   bool _isPermissionDenied(Object error) {
     return error is FirebaseException && error.code == 'permission-denied';
   }
@@ -169,7 +176,6 @@ class CatalogService {
       'createdBy': createdBy,
       'workgroupId': (workgroupId == null || workgroupId.trim().isEmpty) ? null : workgroupId.trim(),
       'isActive': true,
-      'source': 'user',
       'createdAt': now,
       'updatedAt': now,
     });
@@ -237,7 +243,6 @@ class CatalogService {
         'createdBy': userId,
         'workgroupId': null,
         'isActive': true,
-        'source': 'sample',
         'createdAt': now,
         'updatedAt': now,
       });
@@ -262,14 +267,21 @@ class CatalogService {
   Future<SampleCatalogUnloadResult> unloadFixedSampleCatalog({
     required String userId,
   }) async {
+    final sampleKeys = _sampleKeys();
     final snapshot = await FirebaseService.catalog
         .where('createdBy', isEqualTo: userId)
         .where('workgroupId', isEqualTo: null)
-        .where('source', isEqualTo: 'sample')
         .get()
         .timeout(const Duration(seconds: 15));
 
-    if (snapshot.docs.isEmpty) {
+    final docsToDelete = snapshot.docs.where((doc) {
+      final data = doc.data();
+      final nameLower = ((data['nameLower'] as String?) ?? '').trim();
+      final unitLower = ((data['unit'] as String?) ?? '').trim().toLowerCase();
+      return sampleKeys.contains('$nameLower|$unitLower');
+    }).toList();
+
+    if (docsToDelete.isEmpty) {
       return const SampleCatalogUnloadResult(removed: 0);
     }
 
@@ -277,7 +289,7 @@ class CatalogService {
     var pending = 0;
     var removed = 0;
 
-    for (final doc in snapshot.docs) {
+    for (final doc in docsToDelete) {
       batch.delete(doc.reference);
       pending++;
       removed++;

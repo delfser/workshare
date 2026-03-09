@@ -8,6 +8,26 @@ import 'firebase_service.dart';
 class AuthService {
   Stream<User?> authStateChanges() => FirebaseService.auth.authStateChanges();
 
+  Future<bool> verifyCurrentUserStillValid() async {
+    final user = FirebaseService.auth.currentUser;
+    if (user == null) return false;
+    try {
+      await user.reload().timeout(const Duration(seconds: 8));
+      return FirebaseService.auth.currentUser != null;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-disabled' ||
+          e.code == 'user-not-found' ||
+          e.code == 'invalid-user-token' ||
+          e.code == 'user-token-expired') {
+        return false;
+      }
+      rethrow;
+    } on TimeoutException {
+      // Network hiccups should not force logout.
+      return true;
+    }
+  }
+
   Future<UserCredential> login({required String email, required String password}) {
     return FirebaseService.auth
         .signInWithEmailAndPassword(

@@ -207,7 +207,15 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
-    if (user == null) return const SizedBox.shrink();
+    if (user == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
+      });
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     _ensurePhotoRetryLoop(user.uid);
     if (_membershipUid != user.uid || _membershipStream == null) {
       _membershipUid = user.uid;

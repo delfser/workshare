@@ -18,6 +18,7 @@ class AuthProvider extends ChangeNotifier {
 
   StreamSubscription<User?>? _sub;
   StreamSubscription<int>? _pendingInvitationsSub;
+  Timer? _sessionGuardTimer;
   User? _user;
   bool _loading = false;
   String? _error;
@@ -28,11 +29,14 @@ class AuthProvider extends ChangeNotifier {
   String? get error => _error;
 
   Future<void> _onAuthChanged(User? user) async {
+    _sessionGuardTimer?.cancel();
+    _sessionGuardTimer = null;
     await _pendingInvitationsSub?.cancel();
     _pendingInvitationsSub = null;
     _user = user;
     notifyListeners();
     if (user?.email != null) {
+      _startSessionGuard();
       try {
         await _authService.ensureUserProfile(user!);
       } catch (_) {
@@ -47,6 +51,23 @@ class AuthProvider extends ChangeNotifier {
         }
       });
     }
+  }
+
+  void _startSessionGuard() {
+    _sessionGuardTimer = Timer.periodic(const Duration(seconds: 20), (_) async {
+      final current = _user;
+      if (current == null) return;
+      try {
+        final valid = await _authService.verifyCurrentUserStillValid();
+        if (!valid) {
+          _error = 'Konto deaktiviert oder gelöscht. Du wurdest abgemeldet.';
+          notifyListeners();
+          await _authService.logout();
+        }
+      } catch (_) {
+        // Ignore transient errors and retry on next cycle.
+      }
+    });
   }
 
   Future<void> _syncInvitations(User user) async {
@@ -178,6 +199,7 @@ class AuthProvider extends ChangeNotifier {
   void dispose() {
     _sub?.cancel();
     _pendingInvitationsSub?.cancel();
+    _sessionGuardTimer?.cancel();
     super.dispose();
   }
 }

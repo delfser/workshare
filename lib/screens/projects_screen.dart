@@ -277,7 +277,13 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     final user = auth.user;
 
     if (user == null) {
-      return const SizedBox.shrink();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
+      });
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     return Scaffold(

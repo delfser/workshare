@@ -257,7 +257,15 @@ class _WorkgroupsScreenState extends State<WorkgroupsScreen> {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
-    if (user == null) return const SizedBox.shrink();
+    if (user == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
+      });
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     final userEmail = (user.email ?? '').toLowerCase();
 
     return Scaffold(

@@ -63,7 +63,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       if (!mounted) return;
       showAppNotice(
         context,
-        friendlyErrorMessage(e, fallback: 'Projektstatus konnte nicht geÃ¤ndert werden.'),
+        friendlyErrorMessage(e, fallback: 'Projektstatus konnte nicht geändert werden.'),
         type: AppNoticeType.error,
       );
     }
@@ -73,11 +73,11 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     final confirm = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('Projekt lÃ¶schen?'),
-            content: const Text('Projekt und zugehÃ¶rige Daten werden entfernt.'),
+            title: const Text('Projekt löschen?'),
+            content: const Text('Projekt und zugehörige Daten werden entfernt.'),
             actions: [
               TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Abbrechen')),
-              FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('LÃ¶schen')),
+              FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Löschen')),
             ],
           ),
         ) ??
@@ -88,12 +88,12 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     try {
       await _projectService.deleteProject(projectId);
       if (!mounted) return;
-      showAppNotice(context, 'Projekt gelÃ¶scht.', type: AppNoticeType.success);
+      showAppNotice(context, 'Projekt gelöscht.', type: AppNoticeType.success);
     } catch (e) {
       if (!mounted) return;
       showAppNotice(
         context,
-        friendlyErrorMessage(e, fallback: 'Projekt konnte nicht gelÃ¶scht werden.'),
+        friendlyErrorMessage(e, fallback: 'Projekt konnte nicht gelöscht werden.'),
         type: AppNoticeType.error,
       );
     }
@@ -233,7 +233,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               });
             },
             icon: Icon(_isSearching ? Icons.close : Icons.search),
-            tooltip: _isSearching ? 'Suche schlieÃŸen' : 'Projekte suchen',
+            tooltip: _isSearching ? 'Suche schließen' : 'Projekte suchen',
           ),
           const SizedBox(width: 12),
         ],
@@ -312,7 +312,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                       if (!canArchive) {
                         showAppNotice(
                           context,
-                          'Nur Owner/Admin dÃ¼rfen Projekte archivieren.',
+                          'Nur Owner/Admin dürfen Projekte archivieren.',
                           type: AppNoticeType.info,
                         );
                         return false;
@@ -326,7 +326,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                       } else {
                         showAppNotice(
                           context,
-                          'FÃ¼r dieses Projekt ist keine Aktion erlaubt.',
+                          'Für dieses Projekt ist keine Aktion erlaubt.',
                           type: AppNoticeType.info,
                         );
                         return false;
@@ -366,7 +366,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               Text(
-                                canDeleteProject ? 'LÃ¶schen' : 'Aus Liste entfernen',
+                                canDeleteProject ? 'Löschen' : 'Aus Liste entfernen',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w600,
@@ -417,7 +417,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                                 if (canDeleteProject)
                                   const PopupMenuItem<String>(
                                     value: 'delete',
-                                    child: Text('Projekt lÃ¶schen'),
+                                    child: Text('Projekt löschen'),
                                   ),
                                 if (canLeaveProject)
                                   const PopupMenuItem<String>(

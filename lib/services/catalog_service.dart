@@ -1,8 +1,19 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:rxdart/rxdart.dart';
 
+import '../data/sample_catalog_entries.dart';
 import '../models/catalog_entry.dart';
 import 'firebase_service.dart';
+
+class SampleCatalogImportResult {
+  const SampleCatalogImportResult({
+    required this.inserted,
+    required this.skipped,
+  });
+
+  final int inserted;
+  final int skipped;
+}
 
 class CatalogService {
   bool _isPermissionDenied(Object error) {
@@ -174,5 +185,67 @@ class CatalogService {
 
   Future<void> deleteEntry(String entryId) {
     return FirebaseService.catalog.doc(entryId).delete();
+  }
+
+  Future<SampleCatalogImportResult> importFixedSampleCatalog({
+    required String userId,
+  }) async {
+    final existingSnapshot = await FirebaseService.catalog
+        .where('createdBy', isEqualTo: userId)
+        .where('workgroupId', isEqualTo: null)
+        .get()
+        .timeout(const Duration(seconds: 15));
+
+    final existingKeys = <String>{
+      for (final doc in existingSnapshot.docs)
+        '${((doc.data()['nameLower'] as String?) ?? '').trim()}|${((doc.data()['unit'] as String?) ?? '').trim().toLowerCase()}',
+    };
+
+    var inserted = 0;
+    var skipped = 0;
+    final now = FirebaseService.now();
+    WriteBatch batch = FirebaseService.db.batch();
+    var pendingInBatch = 0;
+
+    for (final entry in sampleCatalogEntries) {
+      final name = entry.name.trim();
+      final nameLower = name.toLowerCase();
+      final unit = entry.unit.trim().toLowerCase();
+      final key = '$nameLower|$unit';
+
+      if (name.isEmpty || unit.isEmpty || existingKeys.contains(key)) {
+        skipped++;
+        continue;
+      }
+
+      final doc = FirebaseService.catalog.doc();
+      batch.set(doc, {
+        'id': doc.id,
+        'name': name,
+        'nameLower': nameLower,
+        'unit': unit,
+        'category': entry.category?.trim().isEmpty == true ? null : entry.category?.trim(),
+        'createdBy': userId,
+        'workgroupId': null,
+        'isActive': true,
+        'createdAt': now,
+        'updatedAt': now,
+      });
+      existingKeys.add(key);
+      inserted++;
+      pendingInBatch++;
+
+      if (pendingInBatch >= 450) {
+        await batch.commit().timeout(const Duration(seconds: 15));
+        batch = FirebaseService.db.batch();
+        pendingInBatch = 0;
+      }
+    }
+
+    if (pendingInBatch > 0) {
+      await batch.commit().timeout(const Duration(seconds: 15));
+    }
+
+    return SampleCatalogImportResult(inserted: inserted, skipped: skipped);
   }
 }

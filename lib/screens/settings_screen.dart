@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -7,6 +7,7 @@ import '../core/app_config.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/app_update_service.dart';
+import '../services/catalog_service.dart';
 import '../services/firebase_service.dart';
 import '../utils/app_notice.dart';
 import '../utils/error_mapper.dart';
@@ -23,7 +24,9 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   late final Future<PackageInfo> _packageInfoFuture;
   final _updateService = AppUpdateService();
+  final _catalogService = CatalogService();
   bool _checkingUpdate = false;
+  bool _loadingSampleCatalog = false;
 
   @override
   void initState() {
@@ -46,7 +49,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         context: context,
         barrierDismissible: true,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('Update verfügbar'),
+          title: const Text('Update verfuegbar'),
           content: Text(
             update.notes.isEmpty
                 ? 'Version ${update.version} steht bereit. Jetzt installieren?'
@@ -55,7 +58,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Später'),
+              child: const Text('Spaeter'),
             ),
             FilledButton(
               onPressed: () async {
@@ -69,7 +72,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (!ok && mounted) {
                   showAppNotice(
                     context,
-                    'APK-Link konnte nicht geöffnet werden.',
+                    'APK-Link konnte nicht geoeffnet werden.',
                     type: AppNoticeType.error,
                   );
                 }
@@ -83,12 +86,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
       showAppNotice(
         context,
-        friendlyErrorMessage(e, fallback: 'Updateprüfung fehlgeschlagen.'),
+        friendlyErrorMessage(e, fallback: 'Updatepruefung fehlgeschlagen.'),
         type: AppNoticeType.error,
       );
     } finally {
       if (mounted) {
         setState(() => _checkingUpdate = false);
+      }
+    }
+  }
+
+  Future<void> _loadSampleCatalog() async {
+    final user = context.read<AuthProvider>().user;
+    if (user == null) {
+      showAppNotice(context, 'Bitte zuerst anmelden.', type: AppNoticeType.info);
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Beispielkatalog laden?'),
+            content: const Text(
+              'Feste Vorlage wird in deinen persoenlichen Katalog importiert. '
+              'Bestehende Eintraege bleiben erhalten.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Abbrechen'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Laden'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirm || !mounted) return;
+
+    setState(() => _loadingSampleCatalog = true);
+    try {
+      final result = await _catalogService.importFixedSampleCatalog(userId: user.uid);
+      if (!mounted) return;
+      showAppNotice(
+        context,
+        'Beispielkatalog geladen: ${result.inserted} hinzugefuegt, ${result.skipped} uebersprungen.',
+        type: AppNoticeType.success,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showAppNotice(
+        context,
+        friendlyErrorMessage(e, fallback: 'Beispielkatalog konnte nicht geladen werden.'),
+        type: AppNoticeType.error,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _loadingSampleCatalog = false);
       }
     }
   }
@@ -183,9 +239,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 FutureBuilder<PackageInfo>(
                   future: _packageInfoFuture,
                   builder: (context, snapshot) {
-                    final versionText = snapshot.hasData
-                        ? snapshot.data!.version
-                        : 'Laedt...';
+                    final versionText = snapshot.hasData ? snapshot.data!.version : 'Laedt...';
                     return ListTile(
                       leading: const Icon(Icons.info_outline),
                       title: const Text('App-Version'),
@@ -203,12 +257,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.system_update_alt_outlined),
-                    title: const Text('Auf Update prüfen'),
-                    subtitle: const Text('Manuell prüfen und optional installieren'),
+                    title: const Text('Auf Update pruefen'),
+                    subtitle: const Text('Manuell pruefen und optional installieren'),
                     onTap: _checkingUpdate ? null : _checkForAppUpdate,
                   ),
                   const Divider(height: 1),
                 ],
+                ListTile(
+                  leading: _loadingSampleCatalog
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.playlist_add_check_outlined),
+                  title: const Text('Beispielkatalog laden'),
+                  subtitle: const Text('Feste Vorlage einmalig importieren'),
+                  onTap: _loadingSampleCatalog ? null : _loadSampleCatalog,
+                ),
+                const Divider(height: 1),
                 if (uid == null)
                   const ListTile(
                     leading: Icon(Icons.cloud_off_outlined),
@@ -217,9 +284,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   )
                 else
                   StreamBuilder(
-                    stream: FirebaseService.users
-                        .doc(uid)
-                        .snapshots(includeMetadataChanges: true),
+                    stream: FirebaseService.users.doc(uid).snapshots(includeMetadataChanges: true),
                     builder: (context, snapshot) {
                       String statusText = 'Pruefe Verbindung...';
                       IconData statusIcon = Icons.cloud_queue_outlined;

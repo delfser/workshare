@@ -101,4 +101,32 @@ class NotificationService {
     }
     await batch.commit().timeout(const Duration(seconds: 15));
   }
+
+  Future<int> deleteNotificationsOlderThanDays({
+    required String userId,
+    int days = 30,
+  }) async {
+    if (userId.trim().isEmpty || days <= 0) return 0;
+    final cutoff = DateTime.now().subtract(Duration(days: days));
+    final oldDocs = await FirebaseService.appNotifications
+        .where('userId', isEqualTo: userId)
+        .where('createdAt', isLessThan: Timestamp.fromDate(cutoff))
+        .get()
+        .timeout(const Duration(seconds: 15));
+    if (oldDocs.docs.isEmpty) return 0;
+
+    var deleted = 0;
+    const chunkSize = 450;
+    final docs = oldDocs.docs;
+    for (var i = 0; i < docs.length; i += chunkSize) {
+      final end = (i + chunkSize > docs.length) ? docs.length : i + chunkSize;
+      final batch = FirebaseService.db.batch();
+      for (final doc in docs.sublist(i, end)) {
+        batch.delete(doc.reference);
+        deleted++;
+      }
+      await batch.commit().timeout(const Duration(seconds: 20));
+    }
+    return deleted;
+  }
 }

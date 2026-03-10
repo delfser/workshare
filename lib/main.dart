@@ -11,6 +11,7 @@ import 'screens/home_shell.dart';
 import 'screens/login_screen.dart';
 import 'services/auth_service.dart';
 import 'services/invitation_service.dart';
+import 'services/notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,7 +36,11 @@ class WorkShareApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider<ThemeProvider>.value(value: themeProvider),
         ChangeNotifierProvider(
-          create: (_) => AuthProvider(AuthService(), InvitationService()),
+          create: (_) => AuthProvider(
+            AuthService(),
+            InvitationService(),
+            NotificationService(),
+          ),
         ),
       ],
       child: Consumer<ThemeProvider>(

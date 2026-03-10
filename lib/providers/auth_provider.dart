@@ -2,17 +2,27 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/auth_service.dart';
 import '../services/invitation_service.dart';
+import '../services/notification_service.dart';
 
 class AuthProvider extends ChangeNotifier {
-  AuthProvider(this._authService, this._invitationService) {
+  AuthProvider(
+    this._authService,
+    this._invitationService,
+    this._notificationService,
+  ) {
     _sub = _authService.authStateChanges().listen(_onAuthChanged);
   }
 
   final AuthService _authService;
   final InvitationService _invitationService;
+  final NotificationService _notificationService;
+
+  static const _notificationCleanupLastRunKey =
+      'notification_cleanup_last_run_ms';
 
   StreamSubscription<User?>? _sub;
   StreamSubscription<int>? _pendingInvitationsSub;
@@ -42,6 +52,7 @@ class AuthProvider extends ChangeNotifier {
       } catch (_) {
         // Profil-Sync darf Loginfluss nicht blockieren.
       }
+      unawaited(_runNotificationCleanup(user!.uid));
       _pendingInvitationsSub = _invitationService
           .streamPendingInvitationCount(userEmail)
           .listen((_) {
@@ -181,6 +192,24 @@ class AuthProvider extends ChangeNotifier {
   void _setLoading(bool value) {
     _loading = value;
     notifyListeners();
+  }
+
+  Future<void> _runNotificationCleanup(String userId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final nowMs = DateTime.now().millisecondsSinceEpoch;
+      final lastRunMs = prefs.getInt(_notificationCleanupLastRunKey) ?? 0;
+      const minIntervalMs = 24 * 60 * 60 * 1000; // 1 day
+      if (nowMs - lastRunMs < minIntervalMs) return;
+
+      await _notificationService.deleteNotificationsOlderThanDays(
+        userId: userId,
+        days: 30,
+      );
+      await prefs.setInt(_notificationCleanupLastRunKey, nowMs);
+    } catch (_) {
+      // Cleanup should never block auth flow.
+    }
   }
 
   @override

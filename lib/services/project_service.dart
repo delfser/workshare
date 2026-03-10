@@ -340,22 +340,59 @@ class ProjectService {
         .where('projectId', isEqualTo: projectId)
         .get()
         .timeout(const Duration(seconds: 15));
+    final notes = await FirebaseService.projectNotes
+        .where('projectId', isEqualTo: projectId)
+        .get()
+        .timeout(const Duration(seconds: 15));
+    final workLogs = await FirebaseService.workLogs
+        .where('projectId', isEqualTo: projectId)
+        .get()
+        .timeout(const Duration(seconds: 15));
+    final photos = await FirebaseService.projectPhotos
+        .where('projectId', isEqualTo: projectId)
+        .get()
+        .timeout(const Duration(seconds: 15));
 
-    final batch = FirebaseService.db.batch();
-    batch.delete(FirebaseService.projects.doc(projectId));
-    for (final doc in members.docs) {
-      batch.delete(doc.reference);
+    // Delete storage files first (best effort). Firestore docs are the source of truth.
+    for (final doc in photos.docs) {
+      final storagePath = (doc.data()['storagePath'] as String?) ?? '';
+      if (storagePath.trim().isEmpty) continue;
+      try {
+        await FirebaseService.storage.ref().child(storagePath).delete().timeout(
+              const Duration(seconds: 15),
+            );
+      } catch (_) {
+        // If file is already missing or cannot be removed now, continue with doc cleanup.
+      }
     }
-    for (final doc in materials.docs) {
-      batch.delete(doc.reference);
+
+    final refs = <DocumentReference<Map<String, dynamic>>>[
+      FirebaseService.projects.doc(projectId),
+      ...members.docs.map((d) => d.reference),
+      ...materials.docs.map((d) => d.reference),
+      ...invitations.docs.map((d) => d.reference),
+      ...joinCodes.docs.map((d) => d.reference),
+      ...notes.docs.map((d) => d.reference),
+      ...workLogs.docs.map((d) => d.reference),
+      ...photos.docs.map((d) => d.reference),
+    ];
+
+    await _deleteRefsInChunks(refs);
+  }
+
+  Future<void> _deleteRefsInChunks(
+    List<DocumentReference<Map<String, dynamic>>> refs,
+  ) async {
+    if (refs.isEmpty) return;
+    const chunkSize = 450; // Keep safe distance to Firestore batch limit (500).
+    for (var i = 0; i < refs.length; i += chunkSize) {
+      final end = (i + chunkSize > refs.length) ? refs.length : i + chunkSize;
+      final batch = FirebaseService.db.batch();
+      for (final ref in refs.sublist(i, end)) {
+        batch.delete(ref);
+      }
+      await batch.commit().timeout(const Duration(seconds: 20));
     }
-    for (final doc in invitations.docs) {
-      batch.delete(doc.reference);
-    }
-    for (final doc in joinCodes.docs) {
-      batch.delete(doc.reference);
-    }
-    await batch.commit().timeout(const Duration(seconds: 15));
   }
 
   Stream<List<ProjectMember>> streamMembers(String projectId) {

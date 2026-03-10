@@ -6,3 +6,6 @@ build/
 .idea/
 .vscode/
 android/app/google-services.json
+# Android release signing
+android/key.properties
+android/upload-keystore.jks

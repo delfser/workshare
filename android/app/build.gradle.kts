@@ -8,6 +8,14 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+import java.util.Properties
+
+val keyProperties = Properties()
+val keyPropertiesFile = rootProject.file("key.properties")
+if (keyPropertiesFile.exists()) {
+    keyProperties.load(keyPropertiesFile.inputStream())
+}
+
 android {
     namespace = "com.workshare.workshare"
     compileSdk = flutter.compileSdkVersion
@@ -33,11 +41,26 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            if (keyPropertiesFile.exists()) {
+                val storeFilePath = keyProperties["storeFile"] as String?
+                if (!storeFilePath.isNullOrBlank()) {
+                    storeFile = file(storeFilePath)
+                }
+                storePassword = keyProperties["storePassword"] as String?
+                keyAlias = keyProperties["keyAlias"] as String?
+                keyPassword = keyProperties["keyPassword"] as String?
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // For Play Store uploads, configure android/key.properties with your upload keystore.
+            signingConfig =
+                if (keyPropertiesFile.exists()) signingConfigs.getByName("release")
+                else signingConfigs.getByName("debug")
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 class AppTheme {
   static const _seed = Color(0xFF4F6385);
@@ -75,7 +75,8 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
-      inputDecorationTheme: const InputDecorationTheme(border: UnderlineInputBorder()),
+      inputDecorationTheme:
+          const InputDecorationTheme(border: UnderlineInputBorder()),
       navigationBarTheme: const NavigationBarThemeData(
         elevation: 0,
         indicatorColor: Color(0xFF2B3953),

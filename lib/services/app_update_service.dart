@@ -11,11 +11,12 @@ class AppUpdateService {
     final url = AppConfig.otaVersionUrl.trim();
     if (url.isEmpty) return null;
 
-    final response = await http
-        .get(Uri.parse(url), headers: const {'Cache-Control': 'no-cache'})
-        .timeout(const Duration(seconds: 12));
+    final response = await http.get(Uri.parse(url), headers: const {
+      'Cache-Control': 'no-cache'
+    }).timeout(const Duration(seconds: 12));
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('Update-Server nicht erreichbar (${response.statusCode}).');
+      throw Exception(
+          'Update-Server nicht erreichbar (${response.statusCode}).');
     }
 
     final jsonBody = jsonDecode(response.body);

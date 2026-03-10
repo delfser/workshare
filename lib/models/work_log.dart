@@ -1,4 +1,4 @@
-﻿class WorkLog {
+class WorkLog {
   const WorkLog({
     required this.id,
     required this.projectId,

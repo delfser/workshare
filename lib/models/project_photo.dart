@@ -27,10 +27,13 @@ class ProjectPhoto {
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  bool get isUploaded => uploadStatus == ProjectPhotoUploadStatus.uploaded && downloadUrl.isNotEmpty;
+  bool get isUploaded =>
+      uploadStatus == ProjectPhotoUploadStatus.uploaded &&
+      downloadUrl.isNotEmpty;
 
   factory ProjectPhoto.fromMap(String id, Map<String, dynamic> map) {
-    final rawStatus = (map['uploadStatus'] as String? ?? '').trim().toLowerCase();
+    final rawStatus =
+        (map['uploadStatus'] as String? ?? '').trim().toLowerCase();
     final status = ProjectPhotoUploadStatus.values.firstWhere(
       (s) => s.name == rawStatus,
       orElse: () => ((map['downloadUrl'] as String? ?? '').isNotEmpty
@@ -44,7 +47,8 @@ class ProjectPhoto {
       downloadUrl: map['downloadUrl'] as String? ?? '',
       localPath: map['localPath'] as String? ?? '',
       uploadStatus: status,
-      uploadProgress: (map['uploadProgress'] as num?)?.toDouble() ?? (status == ProjectPhotoUploadStatus.uploaded ? 1 : 0),
+      uploadProgress: (map['uploadProgress'] as num?)?.toDouble() ??
+          (status == ProjectPhotoUploadStatus.uploaded ? 1 : 0),
       errorMessage: map['errorMessage'] as String?,
       createdBy: map['createdBy'] as String? ?? '',
       createdAt: (map['createdAt'] as dynamic).toDate() as DateTime,

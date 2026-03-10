@@ -1,4 +1,4 @@
-﻿class Project {
+class Project {
   const Project({
     required this.id,
     required this.name,

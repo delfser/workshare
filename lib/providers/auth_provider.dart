@@ -1,11 +1,10 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../services/auth_service.dart';
 import '../services/invitation_service.dart';
-import '../services/project_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   AuthProvider(this._authService, this._invitationService) {
@@ -14,7 +13,6 @@ class AuthProvider extends ChangeNotifier {
 
   final AuthService _authService;
   final InvitationService _invitationService;
-  final ProjectService _projectService = ProjectService();
 
   StreamSubscription<User?>? _sub;
   StreamSubscription<int>? _pendingInvitationsSub;
@@ -35,20 +33,19 @@ class AuthProvider extends ChangeNotifier {
     _pendingInvitationsSub = null;
     _user = user;
     notifyListeners();
-    if (user?.email != null) {
+
+    final userEmail = user?.email ?? '';
+    if (userEmail.isNotEmpty) {
       _startSessionGuard();
       try {
         await _authService.ensureUserProfile(user!);
       } catch (_) {
         // Profil-Sync darf Loginfluss nicht blockieren.
       }
-      unawaited(_syncInvitations(user!));
-      _pendingInvitationsSub =
-          _invitationService.streamPendingInvitationCount(user.email ?? '').listen((_) {
-        final current = _user;
-        if (current?.email != null) {
-          unawaited(_syncInvitations(current!));
-        }
+      _pendingInvitationsSub = _invitationService
+          .streamPendingInvitationCount(userEmail)
+          .listen((_) {
+        // Listener nur aktiv halten, damit neue Einladungen sofort sichtbar werden.
       });
     }
   }
@@ -70,18 +67,6 @@ class AuthProvider extends ChangeNotifier {
     });
   }
 
-  Future<void> _syncInvitations(User user) async {
-    try {
-      await _invitationService.acceptPendingInvitationsForUser(
-        userId: user.uid,
-        email: user.email ?? '',
-      );
-      await _projectService.promoteSelfToOwnerForWorkgroupProjects(userId: user.uid);
-    } catch (_) {
-      // Login/Registrierung darf nicht blockieren, wenn Invitation-Sync fehlschlaegt.
-    }
-  }
-
   Future<bool> login(String email, String password) async {
     _setLoading(true);
     _error = null;
@@ -101,18 +86,21 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> register(String email, String password, String displayName) async {
+  Future<bool> register(
+      String email, String password, String displayName) async {
     _setLoading(true);
     _error = null;
     try {
-      await _authService.register(email: email, password: password, displayName: displayName);
+      await _authService.register(
+          email: email, password: password, displayName: displayName);
       return true;
     } on FirebaseAuthException catch (e) {
       _error = _friendlyAuthError(e, isLogin: false);
       notifyListeners();
       return false;
     } catch (_) {
-      _error = 'Unerwarteter Fehler bei der Registrierung. Bitte erneut versuchen.';
+      _error =
+          'Unerwarteter Fehler bei der Registrierung. Bitte erneut versuchen.';
       notifyListeners();
       return false;
     } finally {
@@ -129,7 +117,7 @@ class AuthProvider extends ChangeNotifier {
       case 'user-not-found':
         return 'Kein Konto mit dieser E-Mail gefunden.';
       case 'invalid-email':
-        return 'Die E-Mail-Adresse ist ungueltig.';
+        return 'Die E-Mail-Adresse ist ungültig.';
       case 'email-already-in-use':
         return 'Diese E-Mail wird bereits verwendet.';
       case 'weak-password':
@@ -137,9 +125,9 @@ class AuthProvider extends ChangeNotifier {
       case 'operation-not-allowed':
         return 'E-Mail/Passwort-Anmeldung ist in Firebase nicht aktiviert.';
       case 'too-many-requests':
-        return 'Zu viele Versuche. Bitte spaeter erneut versuchen.';
+        return 'Zu viele Versuche. Bitte später erneut versuchen.';
       case 'network-request-failed':
-        return 'Netzwerkfehler. Bitte Internetverbindung pruefen.';
+        return 'Netzwerkfehler. Bitte Internetverbindung prüfen.';
       case 'user-disabled':
         return 'Dieses Benutzerkonto wurde deaktiviert.';
       case 'timeout':
@@ -148,8 +136,8 @@ class AuthProvider extends ChangeNotifier {
             : 'Registrierung dauert zu lange. Bitte erneut versuchen.';
       default:
         return isLogin
-            ? 'Login fehlgeschlagen. Bitte Eingaben pruefen.'
-            : 'Registrierung fehlgeschlagen. Bitte Eingaben pruefen.';
+            ? 'Login fehlgeschlagen. Bitte Eingaben prüfen.'
+            : 'Registrierung fehlgeschlagen. Bitte Eingaben prüfen.';
     }
   }
 

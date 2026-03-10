@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/enums.dart';
 import '../models/workgroup_member.dart';
 import '../providers/auth_provider.dart';
+import '../services/invitation_service.dart';
 import '../services/workgroup_service.dart';
 import '../utils/app_notice.dart';
 import '../utils/error_mapper.dart';
@@ -18,6 +19,7 @@ class WorkgroupsScreen extends StatefulWidget {
 
 class _WorkgroupsScreenState extends State<WorkgroupsScreen> {
   final _service = WorkgroupService();
+  final _invitationService = InvitationService();
 
   Future<void> _createWorkgroup(String ownerId, String ownerEmail) async {
     var value = '';
@@ -31,19 +33,30 @@ class _WorkgroupsScreenState extends State<WorkgroupsScreen> {
             decoration: const InputDecoration(labelText: 'Name'),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Abbrechen')),
-            FilledButton(onPressed: () => Navigator.pop(context, value.trim()), child: const Text('Erstellen')),
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Abbrechen')),
+            FilledButton(
+                onPressed: () => Navigator.pop(context, value.trim()),
+                child: const Text('Erstellen')),
           ],
         ),
       );
       if (name == null || name.trim().isEmpty) return;
-      await _service.createWorkgroup(ownerId: ownerId, ownerEmail: ownerEmail, name: name);
+      await _service.createWorkgroup(
+          ownerId: ownerId, ownerEmail: ownerEmail, name: name);
       if (!mounted) return;
-      showAppNotice(context, 'Workgroup erstellt.', type: AppNoticeType.success);
+      showAppNotice(context, 'Workgroup erstellt.',
+          type: AppNoticeType.success);
       setState(() {});
     } catch (e) {
       if (!mounted) return;
-      showAppNotice(context, friendlyErrorMessage(e, fallback: 'Workgroup konnte nicht erstellt werden.'), type: AppNoticeType.error);
+      showAppNotice(
+        context,
+        friendlyErrorMessage(e,
+            fallback: 'Workgroup konnte nicht erstellt werden.'),
+        type: AppNoticeType.error,
+      );
     }
   }
 
@@ -60,19 +73,77 @@ class _WorkgroupsScreenState extends State<WorkgroupsScreen> {
             decoration: const InputDecoration(labelText: 'Workgroup-Code'),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Abbrechen')),
-            FilledButton(onPressed: () => Navigator.pop(context, value.trim()), child: const Text('Beitreten')),
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Abbrechen')),
+            FilledButton(
+                onPressed: () => Navigator.pop(context, value.trim()),
+                child: const Text('Beitreten')),
           ],
         ),
       );
       if (code == null || code.trim().isEmpty) return;
       await _service.joinByCode(code: code, userId: userId, email: email);
       if (!mounted) return;
-      showAppNotice(context, 'Workgroup beigetreten.', type: AppNoticeType.success);
+      showAppNotice(context, 'Workgroup beigetreten.',
+          type: AppNoticeType.success);
       setState(() {});
     } catch (e) {
       if (!mounted) return;
-      showAppNotice(context, friendlyErrorMessage(e, fallback: 'Beitritt fehlgeschlagen.'), type: AppNoticeType.error);
+      showAppNotice(context,
+          friendlyErrorMessage(e, fallback: 'Beitritt fehlgeschlagen.'),
+          type: AppNoticeType.error);
+    }
+  }
+
+  Future<void> _inviteByEmail({
+    required String workgroupId,
+    required String workgroupName,
+    required String inviterUid,
+  }) async {
+    var value = '';
+    try {
+      final email = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Per E-Mail einladen'),
+          content: TextField(
+            keyboardType: TextInputType.emailAddress,
+            onChanged: (v) => value = v,
+            decoration: const InputDecoration(
+              labelText: 'E-Mail',
+              hintText: 'name@firma.at',
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Abbrechen')),
+            FilledButton(
+                onPressed: () => Navigator.pop(context, value.trim()),
+                child: const Text('Einladen')),
+          ],
+        ),
+      );
+      if (email == null || email.trim().isEmpty) return;
+      await _invitationService.inviteWorkgroupByEmail(
+        workgroupId: workgroupId,
+        workgroupName: workgroupName,
+        email: email,
+        invitedBy: inviterUid,
+        role: WorkgroupRole.member,
+      );
+      if (!mounted) return;
+      showAppNotice(context, 'Workgroup-Einladung gesendet.',
+          type: AppNoticeType.success);
+    } catch (e) {
+      if (!mounted) return;
+      showAppNotice(
+        context,
+        friendlyErrorMessage(e,
+            fallback: 'Workgroup-Einladung konnte nicht gesendet werden.'),
+        type: AppNoticeType.error,
+      );
     }
   }
 
@@ -81,10 +152,15 @@ class _WorkgroupsScreenState extends State<WorkgroupsScreen> {
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('Workgroup löschen?'),
-            content: Text('Soll die Workgroup "$name" wirklich gelöscht werden?'),
+            content:
+                Text('Soll die Workgroup "$name" wirklich gelöscht werden?'),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Abbrechen')),
-              FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Löschen')),
+              TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Abbrechen')),
+              FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Löschen')),
             ],
           ),
         ) ??
@@ -94,27 +170,35 @@ class _WorkgroupsScreenState extends State<WorkgroupsScreen> {
     try {
       await _service.deleteWorkgroup(workgroupId);
       if (!mounted) return;
-      showAppNotice(context, 'Workgroup gelöscht.', type: AppNoticeType.success);
+      showAppNotice(context, 'Workgroup gelöscht.',
+          type: AppNoticeType.success);
       setState(() {});
     } catch (e) {
       if (!mounted) return;
       showAppNotice(
         context,
-        friendlyErrorMessage(e, fallback: 'Workgroup konnte nicht gelöscht werden.'),
+        friendlyErrorMessage(e,
+            fallback: 'Workgroup konnte nicht gelöscht werden.'),
         type: AppNoticeType.error,
       );
     }
   }
 
-  Future<void> _leaveWorkgroup(String workgroupId, String name, String userId) async {
+  Future<void> _leaveWorkgroup(
+      String workgroupId, String name, String userId) async {
     final confirm = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('Workgroup verlassen?'),
-            content: Text('Soll die Workgroup "$name" aus deiner Liste entfernt werden?'),
+            content: Text(
+                'Soll die Workgroup "$name" aus deiner Liste entfernt werden?'),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Abbrechen')),
-              FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Verlassen')),
+              TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Abbrechen')),
+              FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Verlassen')),
             ],
           ),
         ) ??
@@ -122,6 +206,7 @@ class _WorkgroupsScreenState extends State<WorkgroupsScreen> {
     if (!confirm) return;
 
     try {
+      if (!mounted) return;
       final auth = context.read<AuthProvider>();
       await _service.leaveWorkgroup(
         workgroupId: workgroupId,
@@ -129,13 +214,15 @@ class _WorkgroupsScreenState extends State<WorkgroupsScreen> {
         email: (auth.user?.email ?? '').toLowerCase(),
       );
       if (!mounted) return;
-      showAppNotice(context, 'Workgroup verlassen.', type: AppNoticeType.success);
+      showAppNotice(context, 'Workgroup verlassen.',
+          type: AppNoticeType.success);
       setState(() {});
     } catch (e) {
       if (!mounted) return;
       showAppNotice(
         context,
-        friendlyErrorMessage(e, fallback: 'Workgroup konnte nicht verlassen werden.'),
+        friendlyErrorMessage(e,
+            fallback: 'Workgroup konnte nicht verlassen werden.'),
         type: AppNoticeType.error,
       );
     }
@@ -147,7 +234,8 @@ class _WorkgroupsScreenState extends State<WorkgroupsScreen> {
     required String currentUserId,
     required WorkgroupRole selfRole,
   }) async {
-    final canManage = selfRole == WorkgroupRole.owner || selfRole == WorkgroupRole.admin;
+    final canManage =
+        selfRole == WorkgroupRole.owner || selfRole == WorkgroupRole.admin;
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -166,12 +254,15 @@ class _WorkgroupsScreenState extends State<WorkgroupsScreen> {
               if (snapshot.hasError) {
                 return const SizedBox(
                   height: 120,
-                  child: Center(child: Text('Mitglieder konnten nicht geladen werden.')),
+                  child: Center(
+                      child: Text('Mitglieder konnten nicht geladen werden.')),
                 );
               }
               final members = snapshot.data ?? const <WorkgroupMember>[];
               if (members.isEmpty) {
-                return const SizedBox(height: 120, child: Center(child: Text('Keine Mitglieder.')));
+                return const SizedBox(
+                    height: 120,
+                    child: Center(child: Text('Keine Mitglieder.')));
               }
 
               return ConstrainedBox(
@@ -182,7 +273,8 @@ class _WorkgroupsScreenState extends State<WorkgroupsScreen> {
                   itemBuilder: (context, index) {
                     final m = members[index];
                     final isSelf = m.userId == currentUserId;
-                    final canRemove = canManage && !isSelf && m.role != WorkgroupRole.owner;
+                    final canRemove =
+                        canManage && !isSelf && m.role != WorkgroupRole.owner;
                     return ListTile(
                       dense: true,
                       leading: const Icon(Icons.person_outline),
@@ -191,20 +283,25 @@ class _WorkgroupsScreenState extends State<WorkgroupsScreen> {
                       trailing: canRemove
                           ? IconButton(
                               tooltip: 'Aus Workgroup entfernen',
-                              icon: const Icon(Icons.person_remove_alt_1_outlined),
+                              icon: const Icon(
+                                  Icons.person_remove_alt_1_outlined),
                               onPressed: () async {
                                 final ok = await showDialog<bool>(
                                       context: context,
                                       builder: (_) => AlertDialog(
-                                        title: const Text('Mitglied entfernen?'),
-                                        content: Text('${m.email} aus der Workgroup entfernen?'),
+                                        title:
+                                            const Text('Mitglied entfernen?'),
+                                        content: Text(
+                                            '${m.email} aus der Workgroup entfernen?'),
                                         actions: [
                                           TextButton(
-                                            onPressed: () => Navigator.pop(context, false),
+                                            onPressed: () =>
+                                                Navigator.pop(context, false),
                                             child: const Text('Abbrechen'),
                                           ),
                                           FilledButton(
-                                            onPressed: () => Navigator.pop(context, true),
+                                            onPressed: () =>
+                                                Navigator.pop(context, true),
                                             child: const Text('Entfernen'),
                                           ),
                                         ],
@@ -229,7 +326,8 @@ class _WorkgroupsScreenState extends State<WorkgroupsScreen> {
                                     context,
                                     friendlyErrorMessage(
                                       e,
-                                      fallback: 'Mitglied konnte nicht entfernt werden.',
+                                      fallback:
+                                          'Mitglied konnte nicht entfernt werden.',
                                     ),
                                     type: AppNoticeType.error,
                                   );
@@ -260,7 +358,8 @@ class _WorkgroupsScreenState extends State<WorkgroupsScreen> {
     if (user == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
+        Navigator.of(context, rootNavigator: true)
+            .popUntil((route) => route.isFirst);
       });
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -291,75 +390,109 @@ class _WorkgroupsScreenState extends State<WorkgroupsScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (membershipSnapshot.hasError) {
-            return const Center(child: Text('Workgroup-Rollen konnten nicht geladen werden.'));
+            return const Center(
+                child: Text('Workgroup-Rollen konnten nicht geladen werden.'));
           }
-          final memberships = membershipSnapshot.data ?? const <WorkgroupMember>[];
-          final roleByGroupId = {for (final m in memberships) m.workgroupId: m.role};
+          final memberships =
+              membershipSnapshot.data ?? const <WorkgroupMember>[];
+          final roleByGroupId = {
+            for (final m in memberships) m.workgroupId: m.role
+          };
 
           return StreamBuilder(
-        stream: _service.streamUserWorkgroups(user.uid),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return const Center(child: Text('Workgroups konnten nicht geladen werden.'));
-          }
-          final groups = snapshot.data ?? const [];
-          if (groups.isEmpty) {
-            return const Center(child: Text('Keine Workgroup vorhanden.'));
-          }
-          return ListView.builder(
-            itemCount: groups.length,
-            itemBuilder: (context, i) {
-              final g = groups[i];
-              final role = roleByGroupId[g.id] ?? WorkgroupRole.member;
-              final isOwner = role == WorkgroupRole.owner;
-              final canManageMembers = role == WorkgroupRole.owner || role == WorkgroupRole.admin;
-              return ListTile(
-                title: Text(g.name),
-                subtitle: Text('Code: ${g.joinCode}'),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      onPressed: () async {
-                        await Clipboard.setData(ClipboardData(text: g.joinCode));
-                        if (!context.mounted) return;
-                        showAppNotice(context, 'Code kopiert.', type: AppNoticeType.success);
+            stream: _service.streamUserWorkgroups(user.uid),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return const Center(
+                    child: Text('Workgroups konnten nicht geladen werden.'));
+              }
+              final groups = snapshot.data ?? const [];
+              if (groups.isEmpty) {
+                return const Center(child: Text('Keine Workgroup vorhanden.'));
+              }
+              return ListView.builder(
+                itemCount: groups.length,
+                itemBuilder: (context, i) {
+                  final g = groups[i];
+                  final role = roleByGroupId[g.id] ?? WorkgroupRole.member;
+                  final isOwner = role == WorkgroupRole.owner;
+                  final canManageMembers = role == WorkgroupRole.owner ||
+                      role == WorkgroupRole.admin;
+                  return ListTile(
+                    title: Text(g.name),
+                    subtitle: Text('Code: ${g.joinCode}'),
+                    trailing: PopupMenuButton<String>(
+                      onSelected: (value) async {
+                        if (value == 'copy_code') {
+                          await Clipboard.setData(
+                              ClipboardData(text: g.joinCode));
+                          if (!context.mounted) return;
+                          showAppNotice(context, 'Code kopiert.',
+                              type: AppNoticeType.success);
+                          return;
+                        }
+                        if (value == 'members' && canManageMembers) {
+                          await _showMembersDialog(
+                            workgroupId: g.id,
+                            workgroupName: g.name,
+                            currentUserId: user.uid,
+                            selfRole: role,
+                          );
+                          return;
+                        }
+                        if (value == 'invite_email' && canManageMembers) {
+                          await _inviteByEmail(
+                            workgroupId: g.id,
+                            workgroupName: g.name,
+                            inviterUid: user.uid,
+                          );
+                          return;
+                        }
+                        if (value == 'delete' && isOwner) {
+                          await _deleteWorkgroup(g.id, g.name);
+                          return;
+                        }
+                        if (value == 'leave' && !isOwner) {
+                          await _leaveWorkgroup(g.id, g.name, user.uid);
+                        }
                       },
-                      icon: const Icon(Icons.copy),
-                    ),
-                    if (canManageMembers)
-                      IconButton(
-                        onPressed: () => _showMembersDialog(
-                          workgroupId: g.id,
-                          workgroupName: g.name,
-                          currentUserId: user.uid,
-                          selfRole: role,
+                      itemBuilder: (_) => [
+                        const PopupMenuItem<String>(
+                          value: 'copy_code',
+                          child: Text('Code kopieren'),
                         ),
-                        icon: const Icon(Icons.group_outlined),
-                        tooltip: 'Mitglieder verwalten',
-                      ),
-                    if (isOwner)
-                      IconButton(
-                        onPressed: () => _deleteWorkgroup(g.id, g.name),
-                        icon: const Icon(Icons.delete_outline),
-                      )
-                    else
-                      IconButton(
-                        onPressed: () => _leaveWorkgroup(g.id, g.name, user.uid),
-                        icon: const Icon(Icons.logout),
-                      ),
-                  ],
-                ),
+                        if (canManageMembers)
+                          const PopupMenuItem<String>(
+                            value: 'members',
+                            child: Text('Mitglieder verwalten'),
+                          ),
+                        if (canManageMembers)
+                          const PopupMenuItem<String>(
+                            value: 'invite_email',
+                            child: Text('Per E-Mail einladen'),
+                          ),
+                        if (isOwner)
+                          const PopupMenuItem<String>(
+                            value: 'delete',
+                            child: Text('Workgroup löschen'),
+                          )
+                        else
+                          const PopupMenuItem<String>(
+                            value: 'leave',
+                            child: Text('Workgroup verlassen'),
+                          ),
+                      ],
+                    ),
+                  );
+                },
               );
             },
           );
         },
-      );
-        },
-      )
+      ),
     );
   }
 }

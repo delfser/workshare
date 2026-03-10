@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -67,7 +67,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     if (value == value.roundToDouble()) {
       return value.toInt().toString();
     }
-    return value.toStringAsFixed(2).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+    return value
+        .toStringAsFixed(2)
+        .replaceAll(RegExp(r'0+$'), '')
+        .replaceAll(RegExp(r'\.$'), '');
   }
 
   Color _photoStatusColor(ProjectPhoto photo) {
@@ -147,7 +150,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       if (!mounted) return;
       showAppNotice(
         context,
-        friendlyErrorMessage(e, fallback: 'Fotos konnten nicht gespeichert werden.'),
+        friendlyErrorMessage(e,
+            fallback: 'Fotos konnten nicht gespeichert werden.'),
         type: AppNoticeType.error,
       );
     }
@@ -210,7 +214,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     if (user == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
+        Navigator.of(context, rootNavigator: true)
+            .popUntil((route) => route.isFirst);
       });
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -229,7 +234,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       stream: _membershipStream,
       builder: (context, membershipSnapshot) {
         if (membershipSnapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
         }
 
         final membership = membershipSnapshot.data;
@@ -257,19 +263,22 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                       widget.project.id,
                       sortMode: _materialSortMode,
                     );
-                    final workLogs = await _workLogService.fetchWorkLogs(widget.project.id);
+                    final workLogs =
+                        await _workLogService.fetchWorkLogs(widget.project.id);
                     await _pdfService.shareMaterialPdf(
                       projectName: widget.project.name,
                       materials: materials,
                       workLogs: workLogs,
                     );
-                    if (!mounted) return;
-                    showAppNotice(context, 'Bericht exportiert.', type: AppNoticeType.success);
+                    if (!context.mounted) return;
+                    showAppNotice(context, 'Bericht exportiert.',
+                        type: AppNoticeType.success);
                   } catch (e) {
-                    if (!mounted) return;
+                    if (!context.mounted) return;
                     showAppNotice(
                       context,
-                      friendlyErrorMessage(e, fallback: 'PDF-Export fehlgeschlagen.'),
+                      friendlyErrorMessage(e,
+                          fallback: 'PDF-Export fehlgeschlagen.'),
                       type: AppNoticeType.error,
                     );
                   }
@@ -278,26 +287,36 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
               IconButton(
                 icon: const Icon(Icons.edit_outlined),
                 onPressed: canMembers
-                    ? () => Navigator.of(context)
-                        .push(MaterialPageRoute(builder: (_) => ProjectFormScreen(project: widget.project)))
+                    ? () => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) =>
+                            ProjectFormScreen(project: widget.project)))
                     : null,
               ),
             ],
           ),
-          floatingActionButton: canWrite && (_sectionIndex == 2 || _sectionIndex == 1 || _sectionIndex == 3)
+          floatingActionButton: canWrite &&
+                  (_sectionIndex == 2 ||
+                      _sectionIndex == 1 ||
+                      _sectionIndex == 3)
               ? FloatingActionButton(
                   onPressed: () {
                     if (_sectionIndex == 2) {
                       Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => MaterialFormScreen(project: widget.project)),
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                MaterialFormScreen(project: widget.project)),
                       );
                     } else if (_sectionIndex == 1) {
                       Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => WorkLogFormScreen(project: widget.project)),
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                WorkLogFormScreen(project: widget.project)),
                       );
                     } else if (_sectionIndex == 3) {
                       Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => NoteFormScreen(project: widget.project)),
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                NoteFormScreen(project: widget.project)),
                       );
                     }
                   },
@@ -310,8 +329,13 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                 margin: const EdgeInsets.fromLTRB(12, 6, 12, 6),
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(
-                        alpha: Theme.of(context).brightness == Brightness.dark ? 0.28 : 0.55,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .surfaceContainerHighest
+                      .withValues(
+                        alpha: Theme.of(context).brightness == Brightness.dark
+                            ? 0.28
+                            : 0.55,
                       ),
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -322,15 +346,19 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(widget.project.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                          Text(widget.project.name,
+                              style: const TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.w700)),
                           const SizedBox(height: 2),
-                    Text(
-                      'Erstellt: $date',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
+                          Text(
+                            'Erstellt: $date',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                          ),
                           const SizedBox(height: 4),
                           Row(
                             children: [
@@ -339,19 +367,25 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                                   'Code: ${projectCode ?? '-'}',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
+                                  style: const TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w600),
                                 ),
                               ),
                               if (projectCode != null && projectCode.isNotEmpty)
                                 IconButton(
                                   onPressed: () async {
-                                    await Clipboard.setData(ClipboardData(text: projectCode));
+                                    await Clipboard.setData(
+                                        ClipboardData(text: projectCode));
                                     if (!context.mounted) return;
-                                    showAppNotice(context, 'Projektcode kopiert.', type: AppNoticeType.success);
+                                    showAppNotice(
+                                        context, 'Projektcode kopiert.',
+                                        type: AppNoticeType.success);
                                   },
                                   icon: const Icon(Icons.copy, size: 18),
                                   tooltip: 'Code kopieren',
-                                  constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                                  constraints: const BoxConstraints(
+                                      minWidth: 24, minHeight: 24),
                                   padding: EdgeInsets.zero,
                                   visualDensity: VisualDensity.compact,
                                 )
@@ -359,15 +393,18 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                                 TextButton(
                                   onPressed: () async {
                                     try {
-                                      final code = await _projectService.ensureProjectJoinCode(
+                                      final code = await _projectService
+                                          .ensureProjectJoinCode(
                                         projectId: widget.project.id,
                                         ownerId: widget.project.ownerId,
                                       );
                                       if (mounted) {
-                                        setState(() => _runtimeProjectCode = code);
+                                        setState(
+                                            () => _runtimeProjectCode = code);
                                       }
                                       if (!context.mounted) return;
-                                      await Clipboard.setData(ClipboardData(text: code));
+                                      await Clipboard.setData(
+                                          ClipboardData(text: code));
                                       if (!context.mounted) return;
                                       showAppNotice(
                                         context,
@@ -380,7 +417,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                                         context,
                                         friendlyErrorMessage(
                                           e,
-                                          fallback: 'Projektcode konnte nicht erstellt werden.',
+                                          fallback:
+                                              'Projektcode konnte nicht erstellt werden.',
                                         ),
                                         type: AppNoticeType.error,
                                       );
@@ -388,11 +426,14 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                                   },
                                   style: TextButton.styleFrom(
                                     visualDensity: VisualDensity.compact,
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
                                     minimumSize: const Size(0, 30),
-                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
                                   ),
-                                  child: const Text('Code erstellen', style: TextStyle(fontSize: 12)),
+                                  child: const Text('Code erstellen',
+                                      style: TextStyle(fontSize: 12)),
                                 ),
                             ],
                           ),
@@ -407,34 +448,42 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                           onPressed: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (_) => ProjectMembersScreen(project: widget.project, selfRole: membership.role),
+                                builder: (_) => ProjectMembersScreen(
+                                    project: widget.project,
+                                    selfRole: membership.role),
                               ),
                             );
                           },
                           style: OutlinedButton.styleFrom(
                             visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
                             minimumSize: const Size(0, 32),
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
-                          child: const Text('Mitglieder', style: TextStyle(fontSize: 13)),
+                          child: const Text('Mitglieder',
+                              style: TextStyle(fontSize: 13)),
                         ),
                         const SizedBox(height: 6),
                         FilledButton(
                           onPressed: canMembers
                               ? () {
                                   Navigator.of(context).push(
-                                    MaterialPageRoute(builder: (_) => InviteMemberScreen(project: widget.project)),
+                                    MaterialPageRoute(
+                                        builder: (_) => InviteMemberScreen(
+                                            project: widget.project)),
                                   );
                                 }
                               : null,
                           style: FilledButton.styleFrom(
                             visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 6),
                             minimumSize: const Size(0, 32),
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
-                          child: const Text('Einladen', style: TextStyle(fontSize: 13)),
+                          child: const Text('Einladen',
+                              style: TextStyle(fontSize: 13)),
                         ),
                       ],
                     ),
@@ -510,7 +559,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
               return const Center(child: CircularProgressIndicator());
             }
             if (snapshot.hasError) {
-              return const Center(child: Text('Notizen konnten nicht geladen werden.'));
+              return const Center(
+                  child: Text('Notizen konnten nicht geladen werden.'));
             }
             final notes = snapshot.data ?? const [];
             if (notes.isEmpty) {
@@ -524,20 +574,24 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                   elevation: 0,
                   child: ListTile(
                     title: Text(note.text),
-                    subtitle: Text(DateFormat('dd.MM.yyyy HH:mm').format(note.updatedAt)),
+                    subtitle: Text(
+                        DateFormat('dd.MM.yyyy HH:mm').format(note.updatedAt)),
                     trailing: canWrite
                         ? IconButton(
                             icon: const Icon(Icons.delete_outline),
                             onPressed: () async {
                               try {
                                 await noteService.deleteNote(note.id);
-                                if (!mounted) return;
-                                showAppNotice(context, 'Notiz gelöscht.', type: AppNoticeType.success);
+                                if (!context.mounted) return;
+                                showAppNotice(context, 'Notiz gelöscht.',
+                                    type: AppNoticeType.success);
                               } catch (e) {
-                                if (!mounted) return;
+                                if (!context.mounted) return;
                                 showAppNotice(
                                   context,
-                                  friendlyErrorMessage(e, fallback: 'Notiz konnte nicht gelöscht werden.'),
+                                  friendlyErrorMessage(e,
+                                      fallback:
+                                          'Notiz konnte nicht gelöscht werden.'),
                                   type: AppNoticeType.error,
                                 );
                               }
@@ -563,11 +617,13 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
               return const Center(child: CircularProgressIndicator());
             }
             if (snapshot.hasError) {
-              return const Center(child: Text('Arbeitszeiten konnten nicht geladen werden.'));
+              return const Center(
+                  child: Text('Arbeitszeiten konnten nicht geladen werden.'));
             }
             final logs = snapshot.data ?? const [];
             if (logs.isEmpty) {
-              return const Center(child: Text('Keine Arbeitszeiten vorhanden.'));
+              return const Center(
+                  child: Text('Keine Arbeitszeiten vorhanden.'));
             }
             return ListView.builder(
               itemCount: logs.length,
@@ -586,13 +642,16 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                             onPressed: () async {
                               try {
                                 await workLogService.deleteWorkLog(log.id);
-                                if (!mounted) return;
-                                showAppNotice(context, 'Arbeitszeit gelöscht.', type: AppNoticeType.success);
+                                if (!context.mounted) return;
+                                showAppNotice(context, 'Arbeitszeit gelöscht.',
+                                    type: AppNoticeType.success);
                               } catch (e) {
-                                if (!mounted) return;
+                                if (!context.mounted) return;
                                 showAppNotice(
                                   context,
-                                  friendlyErrorMessage(e, fallback: 'Arbeitszeit konnte nicht gelöscht werden.'),
+                                  friendlyErrorMessage(e,
+                                      fallback:
+                                          'Arbeitszeit konnte nicht gelöscht werden.'),
                                   type: AppNoticeType.error,
                                 );
                               }
@@ -642,24 +701,30 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     return const Center(child: CircularProgressIndicator());
                   }
                   if (snapshot.hasError) {
-                    return const Center(child: Text('Fotos konnten nicht geladen werden.'));
+                    return const Center(
+                        child: Text('Fotos konnten nicht geladen werden.'));
                   }
                   final photos = snapshot.data ?? const <ProjectPhoto>[];
                   if (photos.isEmpty) {
-                    return const Center(child: Text('Noch keine Fotos hochgeladen.'));
+                    return const Center(
+                        child: Text('Noch keine Fotos hochgeladen.'));
                   }
 
                   return GridView.builder(
                     itemCount: photos.length,
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 3,
                       mainAxisSpacing: 8,
                       crossAxisSpacing: 8,
                     ),
                     itemBuilder: (context, index) {
                       final photo = photos[index];
-                      final localFile = photo.localPath.isNotEmpty ? File(photo.localPath) : null;
-                      final hasLocal = localFile != null && localFile.existsSync();
+                      final localFile = photo.localPath.isNotEmpty
+                          ? File(photo.localPath)
+                          : null;
+                      final hasLocal =
+                          localFile != null && localFile.existsSync();
                       final hasRemote = photo.downloadUrl.isNotEmpty;
                       return ClipRRect(
                         borderRadius: BorderRadius.circular(10),
@@ -672,8 +737,12 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                                       Navigator.of(context).push(
                                         MaterialPageRoute(
                                           builder: (_) => PhotoViewerScreen(
-                                            imageUrl: hasRemote ? photo.downloadUrl : null,
-                                            localPath: hasLocal ? photo.localPath : null,
+                                            imageUrl: hasRemote
+                                                ? photo.downloadUrl
+                                                : null,
+                                            localPath: hasLocal
+                                                ? photo.localPath
+                                                : null,
                                           ),
                                         ),
                                       );
@@ -682,10 +751,14 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                               child: hasLocal
                                   ? Image.file(localFile, fit: BoxFit.cover)
                                   : hasRemote
-                                      ? Image.network(photo.downloadUrl, fit: BoxFit.cover)
+                                      ? Image.network(photo.downloadUrl,
+                                          fit: BoxFit.cover)
                                       : Container(
-                                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                                          child: const Icon(Icons.image_outlined),
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .surfaceContainerHighest,
+                                          child:
+                                              const Icon(Icons.image_outlined),
                                         ),
                             ),
                             Positioned(
@@ -697,18 +770,22 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                                 decoration: BoxDecoration(
                                   color: _photoStatusColor(photo),
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 1),
+                                  border:
+                                      Border.all(color: Colors.white, width: 1),
                                 ),
                               ),
                             ),
-                            if (photo.uploadStatus == ProjectPhotoUploadStatus.failed &&
+                            if (photo.uploadStatus ==
+                                    ProjectPhotoUploadStatus.failed &&
                                 photo.createdBy == userId)
                               Positioned(
                                 left: 22,
                                 bottom: 3,
                                 child: GestureDetector(
-                                  onTap: () => _photoService.retryPhoto(photo.id),
-                                  child: const Icon(Icons.refresh, size: 15, color: Colors.white),
+                                  onTap: () =>
+                                      _photoService.retryPhoto(photo.id),
+                                  child: const Icon(Icons.refresh,
+                                      size: 15, color: Colors.white),
                                 ),
                               ),
                             if (canWrite)
@@ -719,18 +796,22 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                                   onPressed: () async {
                                     try {
                                       await _photoService.deletePhoto(photo);
-                                      if (!mounted) return;
-                                      showAppNotice(context, 'Foto gelöscht.', type: AppNoticeType.success);
+                                      if (!context.mounted) return;
+                                      showAppNotice(context, 'Foto gelöscht.',
+                                          type: AppNoticeType.success);
                                     } catch (e) {
-                                      if (!mounted) return;
+                                      if (!context.mounted) return;
                                       showAppNotice(
                                         context,
-                                        friendlyErrorMessage(e, fallback: 'Foto konnte nicht gelöscht werden.'),
+                                        friendlyErrorMessage(e,
+                                            fallback:
+                                                'Foto konnte nicht gelöscht werden.'),
                                         type: AppNoticeType.error,
                                       );
                                     }
                                   },
-                                  icon: const Icon(Icons.delete, color: Colors.white, size: 18),
+                                  icon: const Icon(Icons.delete,
+                                      color: Colors.white, size: 18),
                                   style: IconButton.styleFrom(
                                     backgroundColor: Colors.black54,
                                     padding: EdgeInsets.zero,
@@ -759,7 +840,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
             children: [
               Text(
                 'Sortierung:',
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -802,12 +884,14 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                 return const Center(child: CircularProgressIndicator());
               }
               if (snapshot.hasError) {
-                return const Center(child: Text('Materialien konnten nicht geladen werden.'));
+                return const Center(
+                    child: Text('Materialien konnten nicht geladen werden.'));
               }
 
               final materials = snapshot.data ?? const [];
               if (materials.isEmpty) {
-                return const Center(child: Text('Noch keine Materialien erfasst.'));
+                return const Center(
+                    child: Text('Noch keine Materialien erfasst.'));
               }
 
               return ListView.builder(
@@ -820,7 +904,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     onEdit: canWrite
                         ? () => Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (_) => MaterialFormScreen(project: widget.project, material: item),
+                                builder: (_) => MaterialFormScreen(
+                                    project: widget.project, material: item),
                               ),
                             )
                         : null,
@@ -828,13 +913,16 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                         ? () async {
                             try {
                               await materialService.deleteMaterial(item.id);
-                              if (!mounted) return;
-                              showAppNotice(context, 'Material gelöscht.', type: AppNoticeType.success);
+                              if (!context.mounted) return;
+                              showAppNotice(context, 'Material gelöscht.',
+                                  type: AppNoticeType.success);
                             } catch (e) {
-                              if (!mounted) return;
+                              if (!context.mounted) return;
                               showAppNotice(
                                 context,
-                                friendlyErrorMessage(e, fallback: 'Material konnte nicht gelöscht werden.'),
+                                friendlyErrorMessage(e,
+                                    fallback:
+                                        'Material konnte nicht gelöscht werden.'),
                                 type: AppNoticeType.error,
                               );
                             }
@@ -852,7 +940,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
 }
 
 class _MiniSectionSelector extends StatelessWidget {
-  const _MiniSectionSelector({required this.selected, required this.onSelected});
+  const _MiniSectionSelector(
+      {required this.selected, required this.onSelected});
 
   final int selected;
   final ValueChanged<int> onSelected;
@@ -861,7 +950,8 @@ class _MiniSectionSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     const items = ['Fotos', 'Arbeitszeit', 'Materialien', 'Notizen'];
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final labelColor = isDark ? Theme.of(context).colorScheme.onSurface : Colors.black;
+    final labelColor =
+        isDark ? Theme.of(context).colorScheme.onSurface : Colors.black;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -885,10 +975,3 @@ class _MiniSectionSelector extends StatelessWidget {
     );
   }
 }
-
-
-
-
-
-
-

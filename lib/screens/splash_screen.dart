@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
@@ -12,7 +12,8 @@ class SplashScreen extends StatelessWidget {
           children: [
             Icon(Icons.construction, size: 64),
             SizedBox(height: 12),
-            Text('WorkShare', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            Text('WorkShare',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             SizedBox(height: 12),
             CircularProgressIndicator(),
           ],
@@ -21,4 +22,3 @@ class SplashScreen extends StatelessWidget {
     );
   }
 }
-

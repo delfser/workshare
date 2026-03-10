@@ -1,4 +1,4 @@
-﻿class Validators {
+class Validators {
   static String? requiredText(String? value, {String label = 'Feld'}) {
     if (value == null || value.trim().isEmpty) {
       return '$label ist erforderlich';
@@ -12,7 +12,7 @@
     }
     final regex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
     if (!regex.hasMatch(value.trim())) {
-      return 'Ungueltige E-Mail';
+      return 'Ungültige E-Mail';
     }
     return null;
   }
@@ -23,7 +23,7 @@
     }
     final parsed = double.tryParse(value.replaceAll(',', '.'));
     if (parsed == null || parsed <= 0) {
-      return '$label muss groesser als 0 sein';
+      return '$label muss größer als 0 sein';
     }
     return null;
   }

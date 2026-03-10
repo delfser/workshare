@@ -6,7 +6,8 @@ class CameraMultiCaptureScreen extends StatefulWidget {
   const CameraMultiCaptureScreen({super.key});
 
   @override
-  State<CameraMultiCaptureScreen> createState() => _CameraMultiCaptureScreenState();
+  State<CameraMultiCaptureScreen> createState() =>
+      _CameraMultiCaptureScreenState();
 }
 
 class _CameraMultiCaptureScreenState extends State<CameraMultiCaptureScreen> {
@@ -25,7 +26,9 @@ class _CameraMultiCaptureScreenState extends State<CameraMultiCaptureScreen> {
     try {
       _cameras = await availableCameras();
       if (_cameras.isEmpty) return;
-      final back = _cameras.where((c) => c.lensDirection == CameraLensDirection.back).toList();
+      final back = _cameras
+          .where((c) => c.lensDirection == CameraLensDirection.back)
+          .toList();
       final selected = back.isNotEmpty ? back.first : _cameras.first;
       final controller = CameraController(
         selected,
@@ -80,7 +83,9 @@ class _CameraMultiCaptureScreenState extends State<CameraMultiCaptureScreen> {
         title: const Text('Fotos aufnehmen'),
         actions: [
           TextButton(
-            onPressed: _captured.isEmpty ? null : () => Navigator.pop(context, _captured),
+            onPressed: _captured.isEmpty
+                ? null
+                : () => Navigator.pop(context, _captured),
             child: Text('Fertig (${_captured.length})'),
           ),
         ],
@@ -97,7 +102,8 @@ class _CameraMultiCaptureScreenState extends State<CameraMultiCaptureScreen> {
                       height: 76,
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 6),
                         itemCount: _captured.length,
                         itemBuilder: (context, index) {
                           return Padding(
@@ -121,7 +127,9 @@ class _CameraMultiCaptureScreenState extends State<CameraMultiCaptureScreen> {
                       children: [
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: _captured.isEmpty ? null : () => Navigator.pop(context, _captured),
+                            onPressed: _captured.isEmpty
+                                ? null
+                                : () => Navigator.pop(context, _captured),
                             icon: const Icon(Icons.check),
                             label: const Text('Hochladen'),
                           ),
@@ -133,7 +141,8 @@ class _CameraMultiCaptureScreenState extends State<CameraMultiCaptureScreen> {
                               ? const SizedBox(
                                   width: 24,
                                   height: 24,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
                                 )
                               : const Icon(Icons.camera_alt),
                         ),

@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -28,7 +28,8 @@ class AuthService {
     }
   }
 
-  Future<UserCredential> login({required String email, required String password}) {
+  Future<UserCredential> login(
+      {required String email, required String password}) {
     return FirebaseService.auth
         .signInWithEmailAndPassword(
           email: email.trim(),
@@ -60,10 +61,14 @@ class AuthService {
         )
         .timeout(const Duration(seconds: 20));
 
-    await credential.user?.updateDisplayName(displayName.trim()).timeout(const Duration(seconds: 10));
+    await credential.user
+        ?.updateDisplayName(displayName.trim())
+        .timeout(const Duration(seconds: 10));
 
     await ensureUserProfile(credential.user!);
-    await credential.user?.sendEmailVerification().timeout(const Duration(seconds: 15));
+    await credential.user
+        ?.sendEmailVerification()
+        .timeout(const Duration(seconds: 15));
 
     return credential;
   }
@@ -84,4 +89,3 @@ class AuthService {
 
   Future<void> logout() => FirebaseService.auth.signOut();
 }
-

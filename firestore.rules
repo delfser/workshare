@@ -281,6 +281,15 @@ service cloud.firestore {
             !('isActive' in get(/databases/$(database)/documents/workgroup_join_codes/$(request.resource.data.joinCode)).data) ||
             get(/databases/$(database)/documents/workgroup_join_codes/$(request.resource.data.joinCode)).data.isActive == true
           )
+        ) ||
+        (
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.invitationId is string &&
+          exists(/databases/$(database)/documents/invitations/$(request.resource.data.invitationId)) &&
+          invitationDoc(request.resource.data.invitationId).data.status == 'pending' &&
+          invitationDoc(request.resource.data.invitationId).data.workgroupId == request.resource.data.workgroupId &&
+          invitationDoc(request.resource.data.invitationId).data.role == request.resource.data.role &&
+          invitationDoc(request.resource.data.invitationId).data.email == userEmail()
         )
       ) && request.resource.data.role in ['owner', 'admin', 'member'];
 
@@ -407,7 +416,10 @@ service cloud.firestore {
     }
     match /invitations/{invitationId} {
       allow read: if isSignedIn() && (
-        canManageProject(resource.data.projectId) ||
+        (
+          resource.data.projectId is string &&
+          canManageProject(resource.data.projectId)
+        ) ||
         (
           resource.data.workgroupId is string &&
           canManageWorkgroup(resource.data.workgroupId)
@@ -415,22 +427,52 @@ service cloud.firestore {
         userEmail() == resource.data.email
       );
 
-      allow create: if isSignedIn() &&
-        canManageProject(request.resource.data.projectId) &&
-        request.resource.data.role in ['owner', 'admin', 'worker', 'viewer'];
+      allow create: if isSignedIn() && (
+        (
+          request.resource.data.projectId is string &&
+          canManageProject(request.resource.data.projectId) &&
+          request.resource.data.role in ['owner', 'admin', 'worker', 'viewer']
+        ) ||
+        (
+          request.resource.data.workgroupId is string &&
+          canManageWorkgroup(request.resource.data.workgroupId) &&
+          request.resource.data.role in ['owner', 'admin', 'member']
+        )
+      );
 
       allow update: if isSignedIn() && (
-        canManageProject(resource.data.projectId) ||
+        (
+          resource.data.projectId is string &&
+          canManageProject(resource.data.projectId)
+        ) ||
+        (
+          resource.data.workgroupId is string &&
+          canManageWorkgroup(resource.data.workgroupId)
+        ) ||
         userEmail() == resource.data.email
       );
 
       allow delete: if isSignedIn() && (
-        canManageProject(resource.data.projectId) ||
+        (
+          resource.data.projectId is string &&
+          canManageProject(resource.data.projectId)
+        ) ||
         (
           resource.data.workgroupId is string &&
           canManageWorkgroup(resource.data.workgroupId)
         )
       );
+    }
+
+    match /app_notifications/{notificationId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() &&
+        request.resource.data.userId is string &&
+        request.resource.data.createdBy == request.auth.uid;
+      allow update: if isSignedIn() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == resource.data.userId;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
   }
 }

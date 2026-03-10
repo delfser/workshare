@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../models/material_item.dart';
 
@@ -18,7 +18,10 @@ class MaterialTile extends StatelessWidget {
     if (value == value.roundToDouble()) {
       return value.toInt().toString();
     }
-    return value.toStringAsFixed(2).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+    return value
+        .toStringAsFixed(2)
+        .replaceAll(RegExp(r'0+$'), '')
+        .replaceAll(RegExp(r'\.$'), '');
   }
 
   @override
@@ -38,7 +41,8 @@ class MaterialTile extends StatelessWidget {
                   item.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w600),
                 ),
               ),
               const SizedBox(width: 8),
@@ -50,12 +54,14 @@ class MaterialTile extends StatelessWidget {
                       onPressed: onDelete,
                       icon: const Icon(Icons.delete_outline, size: 18),
                       padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints.tightFor(width: 28, height: 28),
+                      constraints:
+                          const BoxConstraints.tightFor(width: 28, height: 28),
                       visualDensity: VisualDensity.compact,
                     ),
                   Text(
                     'Geplant: ${_formatNumber(item.quantity)} ${item.unit}',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                    style: const TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w500),
                   ),
                 ],
               ),

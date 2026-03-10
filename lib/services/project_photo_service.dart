@@ -16,7 +16,9 @@ class ProjectPhotoService {
         .where('projectId', isEqualTo: projectId)
         .snapshots()
         .map((snapshot) {
-      final photos = snapshot.docs.map((doc) => ProjectPhoto.fromMap(doc.id, doc.data())).toList();
+      final photos = snapshot.docs
+          .map((doc) => ProjectPhoto.fromMap(doc.id, doc.data()))
+          .toList();
       photos.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return photos;
     });
@@ -103,7 +105,8 @@ class ProjectPhotoService {
       }
 
       final extension = _safeExtension(file.path);
-      final storagePath = 'project_photos/${photo.projectId}/${photo.id}.$extension';
+      final storagePath =
+          'project_photos/${photo.projectId}/${photo.id}.$extension';
       final ref = FirebaseService.storage.ref().child(storagePath);
 
       await docRef.update({
@@ -117,7 +120,8 @@ class ProjectPhotoService {
         final task = ref.putFile(file);
         await for (final event in task.snapshotEvents) {
           final total = event.totalBytes <= 0 ? 1 : event.totalBytes;
-          final progress = (event.bytesTransferred / total).clamp(0, 1).toDouble();
+          final progress =
+              (event.bytesTransferred / total).clamp(0, 1).toDouble();
           await docRef.update({
             'uploadStatus': ProjectPhotoUploadStatus.uploading.name,
             'uploadProgress': progress,
@@ -160,7 +164,8 @@ class ProjectPhotoService {
       dir.createSync(recursive: true);
     }
 
-    final target = '${dir.path}/ws_photo_${DateTime.now().millisecondsSinceEpoch}_$index.jpg';
+    final target =
+        '${dir.path}/ws_photo_${DateTime.now().millisecondsSinceEpoch}_$index.jpg';
     try {
       final compressed = await FlutterImageCompress.compressAndGetFile(
         file.path,

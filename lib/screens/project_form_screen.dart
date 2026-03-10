@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -54,30 +54,30 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
       if (_isEdit) {
         await _service
             .updateProject(
-              projectId: widget.project!.id,
-              name: _nameCtrl.text,
-              description: _descCtrl.text,
-            )
+          projectId: widget.project!.id,
+          name: _nameCtrl.text,
+          description: _descCtrl.text,
+        )
             .timeout(
-              const Duration(milliseconds: 1200),
-              onTimeout: () {
-                queuedOffline = true;
-              },
-            );
+          const Duration(milliseconds: 1200),
+          onTimeout: () {
+            queuedOffline = true;
+          },
+        );
       } else {
         await _service
             .createProject(
-              ownerId: user.uid,
-              ownerEmail: user.email ?? '',
-              name: _nameCtrl.text,
-              description: _descCtrl.text,
-            )
+          ownerId: user.uid,
+          ownerEmail: user.email ?? '',
+          name: _nameCtrl.text,
+          description: _descCtrl.text,
+        )
             .timeout(
-              const Duration(milliseconds: 1200),
-              onTimeout: () {
-                queuedOffline = true;
-              },
-            );
+          const Duration(milliseconds: 1200),
+          onTimeout: () {
+            queuedOffline = true;
+          },
+        );
       }
 
       if (mounted) {
@@ -86,14 +86,18 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
           context,
           queuedOffline
               ? 'Offline gespeichert. Sync folgt automatisch.'
-              : (_isEdit ? 'Projekt wurde aktualisiert.' : 'Projekt wurde erstellt.'),
+              : (_isEdit
+                  ? 'Projekt wurde aktualisiert.'
+                  : 'Projekt wurde erstellt.'),
           type: AppNoticeType.success,
         );
       }
     } catch (e) {
+      if (!mounted) return;
       showAppNotice(
         context,
-        friendlyErrorMessage(e, fallback: 'Projekt konnte nicht gespeichert werden.'),
+        friendlyErrorMessage(e,
+            fallback: 'Projekt konnte nicht gespeichert werden.'),
         type: AppNoticeType.error,
       );
     } finally {
@@ -106,11 +110,16 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
     final confirmed = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('Projekt loeschen?'),
-            content: const Text('Alle Material- und Mitgliedsdaten werden geloescht.'),
+            title: const Text('Projekt löschen?'),
+            content: const Text(
+                'Alle Material- und Mitgliedsdaten werden gelöscht.'),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Abbrechen')),
-              FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Loeschen')),
+              TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Abbrechen')),
+              FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Löschen')),
             ],
           ),
         ) ??
@@ -122,14 +131,19 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
       await _service.deleteProject(widget.project!.id);
       if (mounted) {
         Navigator.pop(context);
-        showAppNotice(context, 'Projekt wurde geloescht.', type: AppNoticeType.success);
+        showAppNotice(context, 'Projekt wurde gelöscht.',
+            type: AppNoticeType.success);
       }
     } on TimeoutException {
-      showAppNotice(context, 'Loeschen dauert zu lange. Bitte erneut versuchen.', type: AppNoticeType.error);
+      if (!mounted) return;
+      showAppNotice(context, 'Löschen dauert zu lange. Bitte erneut versuchen.',
+          type: AppNoticeType.error);
     } catch (e) {
+      if (!mounted) return;
       showAppNotice(
         context,
-        friendlyErrorMessage(e, fallback: 'Projekt konnte nicht geloescht werden.'),
+        friendlyErrorMessage(e,
+            fallback: 'Projekt konnte nicht gelöscht werden.'),
         type: AppNoticeType.error,
       );
     } finally {
@@ -162,14 +176,17 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                   children: [
                     TextFormField(
                       controller: _nameCtrl,
-                      decoration: const InputDecoration(labelText: 'Projektname'),
-                      validator: (v) => Validators.requiredText(v, label: 'Projektname'),
+                      decoration:
+                          const InputDecoration(labelText: 'Projektname'),
+                      validator: (v) =>
+                          Validators.requiredText(v, label: 'Projektname'),
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _descCtrl,
                       maxLines: 3,
-                      decoration: const InputDecoration(labelText: 'Beschreibung (optional)'),
+                      decoration: const InputDecoration(
+                          labelText: 'Beschreibung (optional)'),
                     ),
                     const SizedBox(height: 16),
                     SizedBox(

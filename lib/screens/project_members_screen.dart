@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/enums.dart';
@@ -32,7 +32,8 @@ class ProjectMembersScreen extends StatelessWidget {
           IconButton(
             onPressed: () {
               Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => InviteMemberScreen(project: project)),
+                MaterialPageRoute(
+                    builder: (_) => InviteMemberScreen(project: project)),
               );
             },
             icon: const Icon(Icons.person_add_alt_1),
@@ -46,7 +47,8 @@ class ProjectMembersScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return const Center(child: Text('Mitglieder konnten nicht geladen werden.'));
+            return const Center(
+                child: Text('Mitglieder konnten nicht geladen werden.'));
           }
           final members = snapshot.data ?? const [];
           if (members.isEmpty) {
@@ -77,12 +79,15 @@ class ProjectMembersScreen extends StatelessWidget {
                               role: role,
                             );
                             if (!context.mounted) return;
-                            showAppNotice(context, 'Rolle wurde aktualisiert.', type: AppNoticeType.success);
+                            showAppNotice(context, 'Rolle wurde aktualisiert.',
+                                type: AppNoticeType.success);
                           } catch (e) {
                             if (!context.mounted) return;
                             showAppNotice(
                               context,
-                              friendlyErrorMessage(e, fallback: 'Rolle konnte nicht geaendert werden.'),
+                              friendlyErrorMessage(e,
+                                  fallback:
+                                      'Rolle konnte nicht geändert werden.'),
                               type: AppNoticeType.error,
                             );
                           }
@@ -105,14 +110,17 @@ class ProjectMembersScreen extends StatelessWidget {
                                 context: context,
                                 builder: (context) => AlertDialog(
                                   title: const Text('Mitglied entfernen?'),
-                                  content: Text('Soll ${m.email} wirklich aus dem Projekt entfernt werden?'),
+                                  content: Text(
+                                      'Soll ${m.email} wirklich aus dem Projekt entfernt werden?'),
                                   actions: [
                                     TextButton(
-                                      onPressed: () => Navigator.pop(context, false),
+                                      onPressed: () =>
+                                          Navigator.pop(context, false),
                                       child: const Text('Abbrechen'),
                                     ),
                                     FilledButton(
-                                      onPressed: () => Navigator.pop(context, true),
+                                      onPressed: () =>
+                                          Navigator.pop(context, true),
                                       child: const Text('Entfernen'),
                                     ),
                                   ],
@@ -121,14 +129,18 @@ class ProjectMembersScreen extends StatelessWidget {
                               false;
                           if (!confirm) return;
                           try {
-                            await service.removeMember(projectId: project.id, userId: m.userId);
+                            await service.removeMember(
+                                projectId: project.id, userId: m.userId);
                             if (!context.mounted) return;
-                            showAppNotice(context, 'Mitglied wurde entfernt.', type: AppNoticeType.success);
+                            showAppNotice(context, 'Mitglied wurde entfernt.',
+                                type: AppNoticeType.success);
                           } catch (e) {
                             if (!context.mounted) return;
                             showAppNotice(
                               context,
-                              friendlyErrorMessage(e, fallback: 'Mitglied konnte nicht entfernt werden.'),
+                              friendlyErrorMessage(e,
+                                  fallback:
+                                      'Mitglied konnte nicht entfernt werden.'),
                               type: AppNoticeType.error,
                             );
                           }

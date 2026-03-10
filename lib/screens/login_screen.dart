@@ -33,9 +33,11 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (ok) {
-      showAppNotice(context, 'Login erfolgreich. Willkommen bei WorkShare.', type: AppNoticeType.success);
+      showAppNotice(context, 'Login erfolgreich. Willkommen bei WorkShare.',
+          type: AppNoticeType.success);
     } else {
-      showAppNotice(context, auth.error ?? 'Login fehlgeschlagen.', type: AppNoticeType.error);
+      showAppNotice(context, auth.error ?? 'Login fehlgeschlagen.',
+          type: AppNoticeType.error);
     }
   }
 
@@ -58,7 +60,8 @@ class _LoginScreenState extends State<LoginScreen> {
         type: AppNoticeType.success,
       );
     } else {
-      showAppNotice(context, auth.error ?? 'Reset-E-Mail fehlgeschlagen.', type: AppNoticeType.error);
+      showAppNotice(context, auth.error ?? 'Reset-E-Mail fehlgeschlagen.',
+          type: AppNoticeType.error);
     }
   }
 
@@ -70,7 +73,8 @@ class _LoginScreenState extends State<LoginScreen> {
         return LoadingOverlay(
           loading: auth.isLoading,
           child: Scaffold(
-            appBar: AppBar(title: const WorkShareAppBarTitle('WorkShare Login')),
+            appBar:
+                AppBar(title: const WorkShareAppBarTitle('WorkShare Login')),
             body: SafeArea(
               child: Form(
                 key: _formKey,
@@ -93,7 +97,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       controller: _passwordCtrl,
                       obscureText: true,
                       decoration: const InputDecoration(labelText: 'Passwort'),
-                      validator: (v) => Validators.requiredText(v, label: 'Passwort'),
+                      validator: (v) =>
+                          Validators.requiredText(v, label: 'Passwort'),
                     ),
                     const SizedBox(height: 18),
                     SizedBox(
@@ -106,7 +111,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     TextButton(
                       onPressed: () {
                         Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                          MaterialPageRoute(
+                              builder: (_) => const RegisterScreen()),
                         );
                       },
                       child: const Text('Neu registrieren'),
@@ -125,4 +131,3 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-

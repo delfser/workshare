@@ -7,14 +7,38 @@ import '../models/enums.dart';
 import '../models/workgroup.dart';
 import '../models/workgroup_member.dart';
 import 'firebase_service.dart';
+import 'notification_service.dart';
 
 class WorkgroupService {
   static const _alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   static const _projectCodeAlphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   final _random = Random.secure();
+  final _notificationService = NotificationService();
+
+  Future<void> _ensureSingleWorkgroupMembership({
+    required String userId,
+    String? allowWorkgroupId,
+  }) async {
+    final memberships = await FirebaseService.workgroupMembers
+        .where('userId', isEqualTo: userId)
+        .get()
+        .timeout(const Duration(seconds: 15));
+    final existingIds = memberships.docs
+        .map((d) => (d.data()['workgroupId'] as String?) ?? '')
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    if (allowWorkgroupId != null && allowWorkgroupId.isNotEmpty) {
+      existingIds.remove(allowWorkgroupId);
+    }
+    if (existingIds.isNotEmpty) {
+      throw StateError(
+          'Du kannst nur in einer Workgroup sein. Bitte zuerst die bestehende Workgroup verlassen.');
+    }
+  }
 
   String _newCode([int length = 6]) {
-    return List.generate(length, (_) => _alphabet[_random.nextInt(_alphabet.length)]).join();
+    return List.generate(
+        length, (_) => _alphabet[_random.nextInt(_alphabet.length)]).join();
   }
 
   Future<String> _allocateCode() async {
@@ -23,11 +47,14 @@ class WorkgroupService {
       final doc = await FirebaseService.workgroupJoinCodes.doc(code).get();
       if (!doc.exists) return code;
     }
-    throw StateError('Kein freier Workgroup-Code verfuegbar.');
+    throw StateError('Kein freier Workgroup-Code verfügbar.');
   }
 
   String _newProjectCode([int length = 6]) {
-    return List.generate(length, (_) => _projectCodeAlphabet[_random.nextInt(_projectCodeAlphabet.length)]).join();
+    return List.generate(
+        length,
+        (_) => _projectCodeAlphabet[
+            _random.nextInt(_projectCodeAlphabet.length)]).join();
   }
 
   Future<String> _allocateProjectCode() async {
@@ -36,14 +63,16 @@ class WorkgroupService {
       final doc = await FirebaseService.projectJoinCodes.doc(code).get();
       if (!doc.exists) return code;
     }
-    throw StateError('Kein freier Projektcode verfuegbar.');
+    throw StateError('Kein freier Projektcode verfügbar.');
   }
 
   Stream<List<WorkgroupMember>> streamUserMemberships(String uid) {
     return FirebaseService.workgroupMembers
         .where('userId', isEqualTo: uid)
         .snapshots()
-        .map((s) => s.docs.map((d) => WorkgroupMember.fromMap(d.id, d.data())).toList());
+        .map((s) => s.docs
+            .map((d) => WorkgroupMember.fromMap(d.id, d.data()))
+            .toList());
   }
 
   Stream<WorkgroupMember?> streamMembershipForWorkgroup({
@@ -62,8 +91,10 @@ class WorkgroupService {
         .where('workgroupId', isEqualTo: workgroupId)
         .snapshots()
         .map((s) {
-      final members = s.docs.map((d) => WorkgroupMember.fromMap(d.id, d.data())).toList();
-      members.sort((a, b) => a.email.toLowerCase().compareTo(b.email.toLowerCase()));
+      final members =
+          s.docs.map((d) => WorkgroupMember.fromMap(d.id, d.data())).toList();
+      members.sort(
+          (a, b) => a.email.toLowerCase().compareTo(b.email.toLowerCase()));
       return members;
     });
   }
@@ -78,7 +109,8 @@ class WorkgroupService {
   Stream<List<Workgroup>> streamUserManageableWorkgroups(String uid) {
     return streamUserMemberships(uid).switchMap((memberships) {
       final manageable = memberships
-          .where((m) => m.role == WorkgroupRole.owner || m.role == WorkgroupRole.admin)
+          .where((m) =>
+              m.role == WorkgroupRole.owner || m.role == WorkgroupRole.admin)
           .map((m) => m.workgroupId)
           .toSet()
           .toList();
@@ -124,6 +156,7 @@ class WorkgroupService {
     required String ownerEmail,
     required String name,
   }) async {
+    await _ensureSingleWorkgroupMembership(userId: ownerId);
     final groupRef = FirebaseService.workgroups.doc();
     final code = await _allocateCode();
     final now = FirebaseService.now();
@@ -162,6 +195,14 @@ class WorkgroupService {
   }
 
   Future<void> deleteWorkgroup(String workgroupId) async {
+    final currentUid = FirebaseService.auth.currentUser?.uid;
+    final workgroupDoc = await FirebaseService.workgroups
+        .doc(workgroupId)
+        .get()
+        .timeout(const Duration(seconds: 15));
+    final workgroupName =
+        (workgroupDoc.data()?['name'] as String?) ?? 'Workgroup';
+
     final members = await FirebaseService.workgroupMembers
         .where('workgroupId', isEqualTo: workgroupId)
         .get()
@@ -176,6 +217,19 @@ class WorkgroupService {
         userId: userId,
         email: email,
       );
+      if (currentUid != null && userId != currentUid) {
+        try {
+          await _notificationService.createNotification(
+            userId: userId,
+            title: 'Workgroup gelöscht',
+            message: 'Die Workgroup "$workgroupName" wurde vom Owner gelöscht.',
+            type: 'workgroup_deleted',
+            workgroupId: workgroupId,
+          );
+        } catch (_) {
+          // Deletion must continue even if notification write fails.
+        }
+      }
     }
 
     final codes = await FirebaseService.workgroupJoinCodes
@@ -209,15 +263,21 @@ class WorkgroupService {
     final normalized = code.trim().toUpperCase();
     if (normalized.isEmpty) throw StateError('Bitte Workgroup-Code eingeben.');
 
-    final codeDoc = await FirebaseService.workgroupJoinCodes.doc(normalized).get();
+    final codeDoc =
+        await FirebaseService.workgroupJoinCodes.doc(normalized).get();
     if (!codeDoc.exists || codeDoc.data() == null) {
-      throw StateError('Workgroup-Code ungueltig.');
+      throw StateError('Workgroup-Code ungültig.');
     }
     final codeData = codeDoc.data()!;
     final active = codeData['isActive'] as bool? ?? true;
     if (!active) throw StateError('Workgroup-Code ist nicht aktiv.');
     final workgroupId = codeData['workgroupId'] as String? ?? '';
     if (workgroupId.isEmpty) throw StateError('Workgroup-Code ist fehlerhaft.');
+
+    await _ensureSingleWorkgroupMembership(
+      userId: userId,
+      allowWorkgroupId: workgroupId,
+    );
 
     final memberId = '${workgroupId}_$userId';
     final memberRef = FirebaseService.workgroupMembers.doc(memberId);
@@ -233,11 +293,26 @@ class WorkgroupService {
       'joinCode': normalized,
       'joinedAt': FirebaseService.now(),
     });
+
+    final ownerId = (codeData['ownerId'] as String?) ?? '';
+    if (ownerId.isNotEmpty && ownerId != userId) {
+      await _notificationService.createNotification(
+        userId: ownerId,
+        title: 'Neuer Workgroup-Beitritt',
+        message: '${email.toLowerCase()} ist per Code beigetreten.',
+        type: 'workgroup_joined',
+        workgroupId: workgroupId,
+      );
+    }
   }
 
   Future<List<WorkgroupMember>> getMembers(String workgroupId) async {
-    final snap = await FirebaseService.workgroupMembers.where('workgroupId', isEqualTo: workgroupId).get();
-    return snap.docs.map((d) => WorkgroupMember.fromMap(d.id, d.data())).toList();
+    final snap = await FirebaseService.workgroupMembers
+        .where('workgroupId', isEqualTo: workgroupId)
+        .get();
+    return snap.docs
+        .map((d) => WorkgroupMember.fromMap(d.id, d.data()))
+        .toList();
   }
 
   Future<void> leaveWorkgroup({
@@ -250,28 +325,96 @@ class WorkgroupService {
       userId: userId,
       email: email.toLowerCase(),
     );
+    final workgroupDoc = await FirebaseService.workgroups
+        .doc(workgroupId)
+        .get()
+        .timeout(const Duration(seconds: 15));
+    final ownerId = (workgroupDoc.data()?['ownerId'] as String?) ?? '';
+    if (ownerId.isNotEmpty && ownerId != userId) {
+      await _notificationService.createNotification(
+        userId: ownerId,
+        title: 'Mitglied ausgetreten',
+        message: '${email.toLowerCase()} hat die Workgroup verlassen.',
+        type: 'workgroup_left',
+        workgroupId: workgroupId,
+      );
+    }
     final memberId = '${workgroupId}_$userId';
-    await FirebaseService.workgroupMembers.doc(memberId).delete().timeout(const Duration(seconds: 15));
+    await FirebaseService.workgroupMembers
+        .doc(memberId)
+        .delete()
+        .timeout(const Duration(seconds: 15));
   }
 
   Future<void> removeMember({
     required String workgroupId,
     required String userId,
   }) async {
+    final actorUid = FirebaseService.auth.currentUser?.uid ?? '';
+    final actorEmail =
+        (FirebaseService.auth.currentUser?.email ?? '').trim().toLowerCase();
+    final workgroupDoc = await FirebaseService.workgroups
+        .doc(workgroupId)
+        .get()
+        .timeout(const Duration(seconds: 15));
+    final ownerId = (workgroupDoc.data()?['ownerId'] as String?) ?? '';
     final memberId = '${workgroupId}_$userId';
-    final doc = await FirebaseService.workgroupMembers.doc(memberId).get().timeout(const Duration(seconds: 15));
+    final doc = await FirebaseService.workgroupMembers
+        .doc(memberId)
+        .get()
+        .timeout(const Duration(seconds: 15));
     if (!doc.exists || doc.data() == null) return;
     final email = ((doc.data()!['email'] as String?) ?? '').toLowerCase();
     if (email.isEmpty) {
-      await FirebaseService.workgroupMembers.doc(memberId).delete().timeout(const Duration(seconds: 15));
+      await _notificationService.createNotification(
+        userId: userId,
+        title: 'Aus Workgroup entfernt',
+        message: 'Du wurdest aus einer Workgroup entfernt.',
+        type: 'workgroup_removed',
+        workgroupId: workgroupId,
+      );
+      await FirebaseService.workgroupMembers
+          .doc(memberId)
+          .delete()
+          .timeout(const Duration(seconds: 15));
+      if (ownerId.isNotEmpty && ownerId != actorUid) {
+        await _notificationService.createNotification(
+          userId: ownerId,
+          title: 'Mitglied entfernt',
+          message:
+              '${actorEmail.isEmpty ? 'Ein Admin' : actorEmail} hat ein Mitglied entfernt.',
+          type: 'workgroup_member_removed',
+          workgroupId: workgroupId,
+        );
+      }
       return;
     }
+    await _notificationService.createNotification(
+      userId: userId,
+      title: 'Aus Workgroup entfernt',
+      message: 'Du wurdest aus einer Workgroup entfernt.',
+      type: 'workgroup_removed',
+      workgroupId: workgroupId,
+    );
     await _detachProjectsForUser(
       workgroupId: workgroupId,
       userId: userId,
       email: email,
     );
-    await FirebaseService.workgroupMembers.doc(memberId).delete().timeout(const Duration(seconds: 15));
+    await FirebaseService.workgroupMembers
+        .doc(memberId)
+        .delete()
+        .timeout(const Duration(seconds: 15));
+    if (ownerId.isNotEmpty && ownerId != actorUid) {
+      await _notificationService.createNotification(
+        userId: ownerId,
+        title: 'Mitglied entfernt',
+        message:
+            '${actorEmail.isEmpty ? 'Ein Admin' : actorEmail} hat $email entfernt.',
+        type: 'workgroup_member_removed',
+        workgroupId: workgroupId,
+      );
+    }
   }
 
   Future<void> _detachProjectsForUser({
@@ -351,9 +494,12 @@ class WorkgroupService {
         'isActive': true,
       }).timeout(const Duration(seconds: 15));
 
-      await _cloneMaterials(oldProjectId: oldProjectId, newProjectId: newProjectId, now: now);
-      await _cloneWorkLogs(oldProjectId: oldProjectId, newProjectId: newProjectId, now: now);
-      await _cloneNotes(oldProjectId: oldProjectId, newProjectId: newProjectId, now: now);
+      await _cloneMaterials(
+          oldProjectId: oldProjectId, newProjectId: newProjectId, now: now);
+      await _cloneWorkLogs(
+          oldProjectId: oldProjectId, newProjectId: newProjectId, now: now);
+      await _cloneNotes(
+          oldProjectId: oldProjectId, newProjectId: newProjectId, now: now);
 
       final updateData = <String, dynamic>{
         'workgroupId': null,
@@ -363,10 +509,15 @@ class WorkgroupService {
       if (!creatingForSelf) {
         updateData['ownerId'] = userId;
       }
-      await newProjectRef.update(updateData).timeout(const Duration(seconds: 15));
+      await newProjectRef
+          .update(updateData)
+          .timeout(const Duration(seconds: 15));
 
       if (!creatingForSelf) {
-        await FirebaseService.members.doc(creatorMemberId).delete().timeout(const Duration(seconds: 15));
+        await FirebaseService.members
+            .doc(creatorMemberId)
+            .delete()
+            .timeout(const Duration(seconds: 15));
       } else {
         await FirebaseService.members.doc(creatorMemberId).update({
           'email': email,
@@ -374,7 +525,9 @@ class WorkgroupService {
       }
 
       for (final oldMemberDoc in oldMemberships.docs) {
-        await oldMemberDoc.reference.delete().timeout(const Duration(seconds: 15));
+        await oldMemberDoc.reference
+            .delete()
+            .timeout(const Duration(seconds: 15));
       }
     }
   }

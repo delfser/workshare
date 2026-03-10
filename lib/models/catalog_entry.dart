@@ -1,4 +1,4 @@
-﻿class CatalogEntry {
+class CatalogEntry {
   const CatalogEntry({
     required this.id,
     required this.name,

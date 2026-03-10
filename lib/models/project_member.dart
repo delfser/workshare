@@ -1,4 +1,4 @@
-﻿import 'enums.dart';
+import 'enums.dart';
 
 class ProjectMember {
   const ProjectMember({

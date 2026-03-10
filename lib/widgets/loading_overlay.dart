@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 class LoadingOverlay extends StatelessWidget {
   const LoadingOverlay({super.key, required this.loading, required this.child});

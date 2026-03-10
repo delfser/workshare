@@ -1,7 +1,8 @@
-﻿import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'core/app_globals.dart';
 import 'core/app_theme.dart';
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
@@ -42,6 +43,7 @@ class WorkShareApp extends StatelessWidget {
           return MaterialApp(
             title: 'WorkShare',
             debugShowCheckedModeBanner: false,
+            scaffoldMessengerKey: AppGlobals.scaffoldMessengerKey,
             theme: AppTheme.light(),
             darkTheme: AppTheme.dark(),
             themeMode: theme.themeMode,

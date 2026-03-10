@@ -1,6 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../models/enums.dart';
 import '../models/project.dart';
@@ -10,8 +9,9 @@ import '../services/invitation_service.dart';
 import '../services/workgroup_service.dart';
 import '../utils/app_notice.dart';
 import '../utils/error_mapper.dart';
-import '../utils/validators.dart';
 import '../widgets/brand_logo.dart';
+
+enum _InviteMode { email, workgroup }
 
 class InviteMemberScreen extends StatefulWidget {
   const InviteMemberScreen({super.key, required this.project});
@@ -23,18 +23,18 @@ class InviteMemberScreen extends StatefulWidget {
 }
 
 class _InviteMemberScreenState extends State<InviteMemberScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _emailCtrl = TextEditingController();
   final _service = InvitationService();
   final _workgroupService = WorkgroupService();
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  _InviteMode _mode = _InviteMode.email;
   ProjectRole _role = ProjectRole.worker;
-  int _mode = 0;
   String? _selectedWorkgroupId;
   bool _busy = false;
 
   @override
   void dispose() {
-    _emailCtrl.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
@@ -42,73 +42,59 @@ class _InviteMemberScreenState extends State<InviteMemberScreen> {
     final user = context.read<AuthProvider>().user;
     if (user == null) return;
 
+    if (_mode == _InviteMode.email &&
+        !(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+    if (_mode == _InviteMode.workgroup &&
+        (_selectedWorkgroupId == null || _selectedWorkgroupId!.isEmpty)) {
+      showAppNotice(
+        context,
+        'Bitte Workgroup auswaehlen.',
+        type: AppNoticeType.error,
+      );
+      return;
+    }
+
     setState(() => _busy = true);
     try {
-      if (_mode == 0) {
-        if (!_formKey.currentState!.validate()) return;
-        final inviteEmail = _emailCtrl.text.trim().toLowerCase();
+      if (_mode == _InviteMode.email) {
         await _service.inviteByEmail(
           projectId: widget.project.id,
           projectName: widget.project.name,
-          email: inviteEmail,
+          email: _emailController.text,
           role: _role,
           invitedBy: user.uid,
         );
-        final openMail = await showDialog<bool>(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('E-Mail senden?'),
-                content: const Text('Soll zusaetzlich deine Mail-App mit Einladungstext geoeffnet werden?'),
-                actions: [
-                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Nein')),
-                  FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Ja')),
-                ],
-              ),
-            ) ??
-            false;
-        if (openMail) {
-          final uri = Uri(
-            scheme: 'mailto',
-            path: inviteEmail,
-            queryParameters: {
-              'subject': 'WorkShare Einladung: ${widget.project.name}',
-              'body':
-                  'Du wurdest in WorkShare zum Projekt \"${widget.project.name}\" eingeladen. Bitte in der App anmelden.',
-            },
-          );
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        }
+        if (!mounted) return;
+        Navigator.pop(context);
+        showAppNotice(context, 'Einladung in der App gesendet.',
+            type: AppNoticeType.success);
       } else {
-        if (_selectedWorkgroupId == null || _selectedWorkgroupId!.isEmpty) {
-          showAppNotice(context, 'Bitte Workgroup auswaehlen.', type: AppNoticeType.error);
-          return;
-        }
         final created = await _service.inviteWorkgroup(
           projectId: widget.project.id,
           projectName: widget.project.name,
           workgroupId: _selectedWorkgroupId!,
           invitedBy: user.uid,
-          role: ProjectRole.owner,
         );
         if (!mounted) return;
         Navigator.pop(context);
         showAppNotice(
           context,
           created > 0
-              ? 'Workgroup eingeladen ($created Mitglieder).'
-              : 'Keine neuen Mitglieder aus der Workgroup einzuladen.',
+              ? 'Einladungen an Workgroup-Mitglieder gesendet ($created).'
+              : 'Keine neuen Mitglieder zum Einladen gefunden.',
           type: AppNoticeType.success,
         );
-        return;
-      }
-      if (mounted) {
-        Navigator.pop(context);
-        showAppNotice(context, 'Einladung wurde gesendet.', type: AppNoticeType.success);
       }
     } catch (e) {
+      if (!mounted) return;
       showAppNotice(
         context,
-        friendlyErrorMessage(e, fallback: 'Einladung konnte nicht gesendet werden.'),
+        friendlyErrorMessage(
+          e,
+          fallback: 'Einladung konnte nicht gesendet werden.',
+        ),
         type: AppNoticeType.error,
       );
     } finally {
@@ -122,97 +108,126 @@ class _InviteMemberScreenState extends State<InviteMemberScreen> {
     if (user == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
+        Navigator.of(context, rootNavigator: true)
+            .popUntil((route) => route.isFirst);
       });
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
       appBar: AppBar(title: const WorkShareAppBarTitle('WorkShare')),
       body: IgnorePointer(
         ignoring: _busy,
-        child: Padding(
+        child: ListView(
           padding: const EdgeInsets.all(16),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              children: [
-                SegmentedButton<int>(
-                  segments: const [
-                    ButtonSegment<int>(value: 0, label: Text('Einzeln')),
-                    ButtonSegment<int>(value: 1, label: Text('Workgroup')),
-                  ],
-                  selected: {_mode},
-                  onSelectionChanged: (v) {
-                    setState(() => _mode = v.first);
+          children: [
+            SegmentedButton<_InviteMode>(
+              segments: const [
+                ButtonSegment(
+                  value: _InviteMode.email,
+                  icon: Icon(Icons.alternate_email_outlined),
+                  label: Text('Einzeln'),
+                ),
+                ButtonSegment(
+                  value: _InviteMode.workgroup,
+                  icon: Icon(Icons.groups_outlined),
+                  label: Text('Workgroup'),
+                ),
+              ],
+              selected: {_mode},
+              onSelectionChanged: (selection) {
+                setState(() => _mode = selection.first);
+              },
+            ),
+            const SizedBox(height: 12),
+            if (_mode == _InviteMode.email) ...[
+              const Text(
+                'Einladung wird direkt in der App zugestellt (keine Mail-App).',
+                style: TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              Form(
+                key: _formKey,
+                child: TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: (_) => _submit(),
+                  decoration: const InputDecoration(
+                    labelText: 'E-Mail',
+                    hintText: 'name@firma.at',
+                  ),
+                  validator: (value) {
+                    final email = value?.trim() ?? '';
+                    if (email.isEmpty) return 'Bitte E-Mail eingeben.';
+                    final valid =
+                        RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
+                    if (!valid) return 'Bitte gueltige E-Mail eingeben.';
+                    return null;
                   },
                 ),
-                const SizedBox(height: 12),
-                if (_mode == 0) ...[
-                  TextFormField(
-                    controller: _emailCtrl,
-                    decoration: const InputDecoration(labelText: 'E-Mail'),
-                    validator: Validators.email,
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<ProjectRole>(
+                initialValue: _role,
+                decoration: const InputDecoration(labelText: 'Rolle'),
+                items: const [
+                  DropdownMenuItem(
+                    value: ProjectRole.admin,
+                    child: Text('Admin'),
                   ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<ProjectRole>(
-                    value: _role,
-                    decoration: const InputDecoration(labelText: 'Rolle'),
-                    items: ProjectRole.values
-                        .where((role) => role != ProjectRole.owner)
-                        .map((role) => DropdownMenuItem(value: role, child: Text(role.name)))
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _role = value);
-                      }
-                    },
+                  DropdownMenuItem(
+                    value: ProjectRole.worker,
+                    child: Text('Worker'),
                   ),
-                ] else ...[
-                  StreamBuilder<List<Workgroup>>(
-                    stream: _workgroupService.streamUserManageableWorkgroups(user.uid),
-                    builder: (context, snapshot) {
-                      final groups = snapshot.data ?? const <Workgroup>[];
-                      return DropdownButtonFormField<String>(
-                        value: _selectedWorkgroupId,
-                        decoration: const InputDecoration(labelText: 'Workgroup'),
-                        items: groups
-                            .map((g) => DropdownMenuItem<String>(value: g.id, child: Text(g.name)))
-                            .toList(),
-                        onChanged: (value) => setState(() => _selectedWorkgroupId = value),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Alle Mitglieder der Workgroup werden als owner eingeladen.',
-                      style: TextStyle(fontSize: 12),
-                    ),
+                  DropdownMenuItem(
+                    value: ProjectRole.viewer,
+                    child: Text('Viewer (Nur lesen)'),
                   ),
                 ],
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: _submit,
-                    child: const Text('Einladung senden'),
-                  ),
-                ),
-                if (_busy)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 12),
-                    child: CircularProgressIndicator(),
-                  ),
-              ],
+                onChanged: (value) =>
+                    setState(() => _role = value ?? ProjectRole.worker),
+              ),
+            ] else ...[
+              const Text(
+                'Workgroup-Mitglieder erhalten eine App-Einladung und koennen annehmen oder ablehnen.',
+                style: TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              StreamBuilder<List<Workgroup>>(
+                stream:
+                    _workgroupService.streamUserManageableWorkgroups(user.uid),
+                builder: (context, snapshot) {
+                  final groups = snapshot.data ?? const <Workgroup>[];
+                  return DropdownButtonFormField<String>(
+                    initialValue: _selectedWorkgroupId,
+                    decoration: const InputDecoration(labelText: 'Workgroup'),
+                    items: groups
+                        .map((g) => DropdownMenuItem<String>(
+                            value: g.id, child: Text(g.name)))
+                        .toList(),
+                    onChanged: (value) =>
+                        setState(() => _selectedWorkgroupId = value),
+                  );
+                },
+              ),
+            ],
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _submit,
+                child: const Text('Einladung senden'),
+              ),
             ),
-          ),
+            if (_busy)
+              const Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+          ],
         ),
       ),
     );
   }
 }
-

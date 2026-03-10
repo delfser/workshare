@@ -59,5 +59,4 @@ class DefaultFirebaseOptions {
     projectId: 'workshare-41953',
     storageBucket: 'workshare-41953.firebasestorage.app',
   );
-
 }

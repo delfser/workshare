@@ -1,4 +1,4 @@
-﻿import '../models/work_log.dart';
+import '../models/work_log.dart';
 import 'firebase_service.dart';
 
 class WorkLogService {
@@ -12,7 +12,9 @@ class WorkLogService {
         .where('projectId', isEqualTo: projectId)
         .snapshots()
         .map((snapshot) => _sortLogs(
-              snapshot.docs.map((doc) => WorkLog.fromMap(doc.id, doc.data())).toList(),
+              snapshot.docs
+                  .map((doc) => WorkLog.fromMap(doc.id, doc.data()))
+                  .toList(),
             ));
   }
 
@@ -21,7 +23,9 @@ class WorkLogService {
         .where('projectId', isEqualTo: projectId)
         .get()
         .timeout(const Duration(seconds: 15));
-    return _sortLogs(snapshot.docs.map((doc) => WorkLog.fromMap(doc.id, doc.data())).toList());
+    return _sortLogs(snapshot.docs
+        .map((doc) => WorkLog.fromMap(doc.id, doc.data()))
+        .toList());
   }
 
   Future<void> addWorkLog({

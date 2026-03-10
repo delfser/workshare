@@ -1,4 +1,4 @@
-﻿import 'dart:typed_data';
+import 'dart:typed_data';
 
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
@@ -13,7 +13,10 @@ class PdfExportService {
     if (value == value.roundToDouble()) {
       return value.toInt().toString();
     }
-    return value.toStringAsFixed(2).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+    return value
+        .toStringAsFixed(2)
+        .replaceAll(RegExp(r'0+$'), '')
+        .replaceAll(RegExp(r'\.$'), '');
   }
 
   Future<Uint8List> buildMaterialPdf({
@@ -30,14 +33,16 @@ class PdfExportService {
         build: (context) {
           final content = <pw.Widget>[
             pw.Text('WorkShare - Materialexport',
-                style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+                style:
+                    pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 8),
             pw.Text('Projekt: $projectName'),
             pw.Text('Erstellt am: $date'),
             pw.SizedBox(height: 16),
-            pw.Text('Materialien', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+            pw.Text('Materialien',
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 8),
-            pw.Table.fromTextArray(
+            pw.TableHelper.fromTextArray(
               headers: const ['Name', 'Menge', 'Einheit'],
               data: materials
                   .map((m) => [
@@ -51,10 +56,11 @@ class PdfExportService {
 
           if (workLogs.isNotEmpty) {
             content.add(pw.SizedBox(height: 16));
-            content.add(pw.Text('Arbeitszeiten', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)));
+            content.add(pw.Text('Arbeitszeiten',
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold)));
             content.add(pw.SizedBox(height: 8));
             content.add(
-              pw.Table.fromTextArray(
+              pw.TableHelper.fromTextArray(
                 headers: const ['Arbeiter', 'Stunden', 'Datum'],
                 data: workLogs
                     .map((w) => [
@@ -85,6 +91,7 @@ class PdfExportService {
       materials: materials,
       workLogs: workLogs,
     );
-    await Printing.sharePdf(bytes: bytes, filename: 'workshare_material_$projectName.pdf');
+    await Printing.sharePdf(
+        bytes: bytes, filename: 'workshare_material_$projectName.pdf');
   }
 }

@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -51,7 +51,10 @@ class _MaterialFormScreenState extends State<MaterialFormScreen> {
     if (value == value.roundToDouble()) {
       return value.toInt().toString();
     }
-    return value.toStringAsFixed(2).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+    return value
+        .toStringAsFixed(2)
+        .replaceAll(RegExp(r'0+$'), '')
+        .replaceAll(RegExp(r'\.$'), '');
   }
 
   @override
@@ -59,7 +62,8 @@ class _MaterialFormScreenState extends State<MaterialFormScreen> {
     super.initState();
     final material = widget.material;
     _nameCtrl = TextEditingController(text: material?.name ?? '');
-    _quantityCtrl = TextEditingController(text: material == null ? '' : _formatNumber(material.quantity));
+    _quantityCtrl = TextEditingController(
+        text: material == null ? '' : _formatNumber(material.quantity));
     _selectedUnit = _units.contains(material?.unit) ? material!.unit : 'stk';
     _catalogEntryId = material?.catalogEntryId;
     _selectedCatalogNameLower = material?.name.trim().toLowerCase();
@@ -84,7 +88,8 @@ class _MaterialFormScreenState extends State<MaterialFormScreen> {
     final current = _nameCtrl.text.trim();
     final currentLower = current.toLowerCase();
 
-    if (_selectedCatalogNameLower != null && currentLower == _selectedCatalogNameLower) {
+    if (_selectedCatalogNameLower != null &&
+        currentLower == _selectedCatalogNameLower) {
       if (_suggestions.isNotEmpty && mounted) {
         setState(() => _suggestions = []);
       }
@@ -132,6 +137,7 @@ class _MaterialFormScreenState extends State<MaterialFormScreen> {
           });
         }
       } catch (e) {
+        if (!mounted) return;
         showAppNotice(
           context,
           friendlyErrorMessage(e, fallback: 'Katalogsuche nicht verfuegbar.'),
@@ -156,7 +162,8 @@ class _MaterialFormScreenState extends State<MaterialFormScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _quantityFocus.requestFocus();
-      _quantityCtrl.selection = TextSelection(baseOffset: 0, extentOffset: _quantityCtrl.text.length);
+      _quantityCtrl.selection =
+          TextSelection(baseOffset: 0, extentOffset: _quantityCtrl.text.length);
     });
   }
 
@@ -194,36 +201,36 @@ class _MaterialFormScreenState extends State<MaterialFormScreen> {
       if (_isEdit) {
         await _materialService
             .updateMaterial(
-              materialId: widget.material!.id,
-              name: _nameCtrl.text.trim(),
-              quantity: quantity,
-              unit: _selectedUnit,
-              catalogEntryId: _catalogEntryId,
-            )
+          materialId: widget.material!.id,
+          name: _nameCtrl.text.trim(),
+          quantity: quantity,
+          unit: _selectedUnit,
+          catalogEntryId: _catalogEntryId,
+        )
             .timeout(
-              const Duration(milliseconds: 1200),
-              onTimeout: () {
-                queuedOffline = true;
-              },
-            );
+          const Duration(milliseconds: 1200),
+          onTimeout: () {
+            queuedOffline = true;
+          },
+        );
       } else {
         var merged = false;
         merged = await _materialService
             .addMaterial(
-              projectId: widget.project.id,
-              name: _nameCtrl.text.trim(),
-              quantity: quantity,
-              unit: _selectedUnit,
-              catalogEntryId: _catalogEntryId,
-              createdBy: user.uid,
-            )
+          projectId: widget.project.id,
+          name: _nameCtrl.text.trim(),
+          quantity: quantity,
+          unit: _selectedUnit,
+          catalogEntryId: _catalogEntryId,
+          createdBy: user.uid,
+        )
             .timeout(
-              const Duration(milliseconds: 1200),
-              onTimeout: () {
-                queuedOffline = true;
-                return false;
-              },
-            );
+          const Duration(milliseconds: 1200),
+          onTimeout: () {
+            queuedOffline = true;
+            return false;
+          },
+        );
         if (mounted) {
           Navigator.pop(context);
           showAppNotice(
@@ -231,8 +238,8 @@ class _MaterialFormScreenState extends State<MaterialFormScreen> {
             queuedOffline
                 ? 'Offline gespeichert. Sync folgt automatisch.'
                 : merged
-                ? 'Material existiert bereits, Menge wurde addiert.'
-                : 'Material wurde hinzugefuegt.',
+                    ? 'Material existiert bereits, Menge wurde addiert.'
+                    : 'Material wurde hinzugefuegt.',
             type: AppNoticeType.success,
           );
           return;
@@ -242,14 +249,18 @@ class _MaterialFormScreenState extends State<MaterialFormScreen> {
         Navigator.pop(context);
         showAppNotice(
           context,
-          queuedOffline ? 'Offline gespeichert. Sync folgt automatisch.' : 'Material wurde aktualisiert.',
+          queuedOffline
+              ? 'Offline gespeichert. Sync folgt automatisch.'
+              : 'Material wurde aktualisiert.',
           type: AppNoticeType.success,
         );
       }
     } catch (e) {
+      if (!mounted) return;
       showAppNotice(
         context,
-        friendlyErrorMessage(e, fallback: 'Material konnte nicht gespeichert werden.'),
+        friendlyErrorMessage(e,
+            fallback: 'Material konnte nicht gespeichert werden.'),
         type: AppNoticeType.error,
       );
     } finally {
@@ -277,7 +288,8 @@ class _MaterialFormScreenState extends State<MaterialFormScreen> {
                         TextFormField(
                           controller: _nameCtrl,
                           decoration: const InputDecoration(labelText: 'Name'),
-                          validator: (v) => Validators.requiredText(v, label: 'Name'),
+                          validator: (v) =>
+                              Validators.requiredText(v, label: 'Name'),
                         ),
                         if (_suggestions.isNotEmpty)
                           Container(
@@ -302,7 +314,8 @@ class _MaterialFormScreenState extends State<MaterialFormScreen> {
                           Container(
                             width: double.infinity,
                             margin: const EdgeInsets.only(top: 8),
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 8),
                             decoration: BoxDecoration(
                               color: const Color(0xFFEAF2FF),
                               borderRadius: BorderRadius.circular(8),
@@ -324,17 +337,21 @@ class _MaterialFormScreenState extends State<MaterialFormScreen> {
                           child: TextFormField(
                             controller: _quantityCtrl,
                             focusNode: _quantityFocus,
-                            decoration: const InputDecoration(labelText: 'Menge'),
-                            validator: (v) => Validators.positiveNumber(v, label: 'Menge'),
+                            decoration:
+                                const InputDecoration(labelText: 'Menge'),
+                            validator: (v) =>
+                                Validators.positiveNumber(v, label: 'Menge'),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            value: _selectedUnit,
-                            decoration: const InputDecoration(labelText: 'Einheit'),
+                            initialValue: _selectedUnit,
+                            decoration:
+                                const InputDecoration(labelText: 'Einheit'),
                             items: _units
-                                .map((u) => DropdownMenuItem<String>(value: u, child: Text(u)))
+                                .map((u) => DropdownMenuItem<String>(
+                                    value: u, child: Text(u)))
                                 .toList(),
                             onChanged: (value) async {
                               if (value == null) return;
@@ -349,7 +366,8 @@ class _MaterialFormScreenState extends State<MaterialFormScreen> {
                   const SizedBox(height: 18),
                   Align(
                     alignment: Alignment.centerRight,
-                    child: FilledButton(onPressed: _save, child: const Text('speichern')),
+                    child: FilledButton(
+                        onPressed: _save, child: const Text('speichern')),
                   ),
                   if (_busy)
                     const Padding(
@@ -384,7 +402,9 @@ class _SectionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500)),
+          Text(title,
+              style:
+                  const TextStyle(fontSize: 20, fontWeight: FontWeight.w500)),
           const SizedBox(height: 10),
           child,
         ],

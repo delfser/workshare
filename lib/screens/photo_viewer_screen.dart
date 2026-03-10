@@ -44,7 +44,9 @@ class PhotoViewerScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasLocal = localPath != null && localPath!.isNotEmpty && File(localPath!).existsSync();
+    final hasLocal = localPath != null &&
+        localPath!.isNotEmpty &&
+        File(localPath!).existsSync();
     final hasRemote = imageUrl != null && imageUrl!.isNotEmpty;
     return Scaffold(
       appBar: AppBar(

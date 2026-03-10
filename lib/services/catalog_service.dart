@@ -41,8 +41,9 @@ class CatalogService {
         .where('createdBy', isEqualTo: userId)
         .where('workgroupId', isEqualTo: null)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => CatalogEntry.fromMap(doc.id, doc.data())).toList());
+        .map((snapshot) => snapshot.docs
+            .map((doc) => CatalogEntry.fromMap(doc.id, doc.data()))
+            .toList());
 
     final workgroupIdsStream = FirebaseService.workgroupMembers
         .where('userId', isEqualTo: userId)
@@ -55,13 +56,16 @@ class CatalogService {
               .toList(),
         );
 
-    return CombineLatestStream.combine2<List<CatalogEntry>, List<String>, ({List<CatalogEntry> personal, List<String> workgroupIds})>(
+    return CombineLatestStream.combine2<List<CatalogEntry>, List<String>,
+        ({List<CatalogEntry> personal, List<String> workgroupIds})>(
       personalStream,
       workgroupIdsStream,
-      (personal, workgroupIds) => (personal: personal, workgroupIds: workgroupIds),
+      (personal, workgroupIds) =>
+          (personal: personal, workgroupIds: workgroupIds),
     ).switchMap((data) {
       if (data.workgroupIds.isEmpty) {
-        final sorted = [...data.personal]..sort((a, b) => a.nameLower.compareTo(b.nameLower));
+        final sorted = [...data.personal]
+          ..sort((a, b) => a.nameLower.compareTo(b.nameLower));
         return Stream.value(sorted);
       }
 
@@ -76,8 +80,9 @@ class CatalogService {
               .where('isActive', isEqualTo: true)
               .where('workgroupId', whereIn: chunk)
               .snapshots()
-              .map((snapshot) =>
-                  snapshot.docs.map((doc) => CatalogEntry.fromMap(doc.id, doc.data())).toList()),
+              .map((snapshot) => snapshot.docs
+                  .map((doc) => CatalogEntry.fromMap(doc.id, doc.data()))
+                  .toList()),
         );
       }
 
@@ -91,7 +96,8 @@ class CatalogService {
             merged[entry.id] = entry;
           }
         }
-        final all = merged.values.toList()..sort((a, b) => a.nameLower.compareTo(b.nameLower));
+        final all = merged.values.toList()
+          ..sort((a, b) => a.nameLower.compareTo(b.nameLower));
         return all;
       });
     });
@@ -116,7 +122,8 @@ class CatalogService {
         .timeout(const Duration(seconds: 12));
 
     final merged = <String, CatalogEntry>{
-      for (final doc in personalSnapshot.docs) doc.id: CatalogEntry.fromMap(doc.id, doc.data()),
+      for (final doc in personalSnapshot.docs)
+        doc.id: CatalogEntry.fromMap(doc.id, doc.data()),
     };
 
     if (projectWorkgroupId != null && projectWorkgroupId.isNotEmpty) {
@@ -136,12 +143,17 @@ class CatalogService {
     }
 
     final filtered = merged.values.where((e) {
-      final key = (e.nameLower.isNotEmpty ? e.nameLower : e.name.trim().toLowerCase());
+      final key =
+          (e.nameLower.isNotEmpty ? e.nameLower : e.name.trim().toLowerCase());
       return key.startsWith(normalized);
     }).toList()
       ..sort((a, b) {
-        final aKey = (a.nameLower.isNotEmpty ? a.nameLower : a.name.trim().toLowerCase());
-        final bKey = (b.nameLower.isNotEmpty ? b.nameLower : b.name.trim().toLowerCase());
+        final aKey = (a.nameLower.isNotEmpty
+            ? a.nameLower
+            : a.name.trim().toLowerCase());
+        final bKey = (b.nameLower.isNotEmpty
+            ? b.nameLower
+            : b.name.trim().toLowerCase());
         return aKey.compareTo(bKey);
       });
 
@@ -174,7 +186,9 @@ class CatalogService {
       'unit': unit.trim(),
       'category': category?.trim().isEmpty == true ? null : category?.trim(),
       'createdBy': createdBy,
-      'workgroupId': (workgroupId == null || workgroupId.trim().isEmpty) ? null : workgroupId.trim(),
+      'workgroupId': (workgroupId == null || workgroupId.trim().isEmpty)
+          ? null
+          : workgroupId.trim(),
       'isActive': true,
       'createdAt': now,
       'updatedAt': now,
@@ -239,7 +253,9 @@ class CatalogService {
         'name': name,
         'nameLower': nameLower,
         'unit': unit,
-        'category': entry.category?.trim().isEmpty == true ? null : entry.category?.trim(),
+        'category': entry.category?.trim().isEmpty == true
+            ? null
+            : entry.category?.trim(),
         'createdBy': userId,
         'workgroupId': null,
         'isActive': true,

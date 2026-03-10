@@ -1,4 +1,4 @@
-﻿import 'enums.dart';
+import 'enums.dart';
 
 class Invitation {
   const Invitation({
@@ -31,9 +31,10 @@ class Invitation {
       email: map['email'] as String? ?? '',
       role: ProjectRoleX.fromString(map['role'] as String? ?? 'viewer'),
       invitedBy: map['invitedBy'] as String? ?? '',
-      status: InvitationStatusX.fromString(map['status'] as String? ?? 'pending'),
+      status:
+          InvitationStatusX.fromString(map['status'] as String? ?? 'pending'),
       createdAt: (map['createdAt'] as dynamic).toDate() as DateTime,
-      acceptedAt: (map['acceptedAt'] as dynamic?)?.toDate() as DateTime?,
+      acceptedAt: (map['acceptedAt'] as dynamic).toDate() as DateTime?,
     );
   }
 

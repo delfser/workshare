@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -42,7 +42,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final update = await _updateService.checkForUpdate();
       if (!mounted) return;
       if (update == null) {
-        showAppNotice(context, 'Keine neue Version gefunden.', type: AppNoticeType.info);
+        showAppNotice(context, 'Keine neue Version gefunden.',
+            type: AppNoticeType.info);
         return;
       }
 
@@ -50,7 +51,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         context: context,
         barrierDismissible: true,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('Update verfuegbar'),
+          title: const Text('Update verfügbar'),
           content: Text(
             update.notes.isEmpty
                 ? 'Version ${update.version} steht bereit. Jetzt installieren?'
@@ -59,7 +60,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Spaeter'),
+              child: const Text('Später'),
             ),
             FilledButton(
               onPressed: () async {
@@ -73,7 +74,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (!ok && mounted) {
                   showAppNotice(
                     context,
-                    'APK-Link konnte nicht geoeffnet werden.',
+                    'APK-Link konnte nicht geöffnet werden.',
                     type: AppNoticeType.error,
                   );
                 }
@@ -87,7 +88,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
       showAppNotice(
         context,
-        friendlyErrorMessage(e, fallback: 'Updatepruefung fehlgeschlagen.'),
+        friendlyErrorMessage(e, fallback: 'Updateprüfung fehlgeschlagen.'),
         type: AppNoticeType.error,
       );
     } finally {
@@ -100,7 +101,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadSampleCatalog() async {
     final user = context.read<AuthProvider>().user;
     if (user == null) {
-      showAppNotice(context, 'Bitte zuerst anmelden.', type: AppNoticeType.info);
+      showAppNotice(context, 'Bitte zuerst anmelden.',
+          type: AppNoticeType.info);
       return;
     }
 
@@ -109,8 +111,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           builder: (dialogContext) => AlertDialog(
             title: const Text('Beispielkatalog laden?'),
             content: const Text(
-              'Feste Vorlage wird in deinen persoenlichen Katalog importiert. '
-              'Bestehende Eintraege bleiben erhalten.',
+              'Feste Vorlage wird in deinen persönlichen Katalog importiert. '
+              'Bestehende Einträge bleiben erhalten.',
             ),
             actions: [
               TextButton(
@@ -129,18 +131,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     setState(() => _loadingSampleCatalog = true);
     try {
-      final result = await _catalogService.importFixedSampleCatalog(userId: user.uid);
+      final result =
+          await _catalogService.importFixedSampleCatalog(userId: user.uid);
       if (!mounted) return;
       showAppNotice(
         context,
-        'Beispielkatalog geladen: ${result.inserted} hinzugefuegt, ${result.skipped} uebersprungen.',
+        'Beispielkatalog geladen: ${result.inserted} hinzugefügt, ${result.skipped} übersprungen.',
         type: AppNoticeType.success,
       );
     } catch (e) {
       if (!mounted) return;
       showAppNotice(
         context,
-        friendlyErrorMessage(e, fallback: 'Beispielkatalog konnte nicht geladen werden.'),
+        friendlyErrorMessage(e,
+            fallback: 'Beispielkatalog konnte nicht geladen werden.'),
         type: AppNoticeType.error,
       );
     } finally {
@@ -153,7 +157,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _unloadSampleCatalog() async {
     final user = context.read<AuthProvider>().user;
     if (user == null) {
-      showAppNotice(context, 'Bitte zuerst anmelden.', type: AppNoticeType.info);
+      showAppNotice(context, 'Bitte zuerst anmelden.',
+          type: AppNoticeType.info);
       return;
     }
 
@@ -162,8 +167,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           builder: (dialogContext) => AlertDialog(
             title: const Text('Beispielkatalog entladen?'),
             content: const Text(
-              'Es werden nur importierte Beispiel-Eintraege entfernt. '
-              'Deine eigenen Katalogeintraege bleiben erhalten.',
+              'Es werden nur importierte Beispiel-Einträge entfernt. '
+              'Deine eigenen Katalogeinträge bleiben erhalten.',
             ),
             actions: [
               TextButton(
@@ -182,7 +187,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     setState(() => _unloadingSampleCatalog = true);
     try {
-      final result = await _catalogService.unloadFixedSampleCatalog(userId: user.uid);
+      final result =
+          await _catalogService.unloadFixedSampleCatalog(userId: user.uid);
       if (!mounted) return;
       showAppNotice(
         context,
@@ -193,7 +199,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
       showAppNotice(
         context,
-        friendlyErrorMessage(e, fallback: 'Beispielkatalog konnte nicht entladen werden.'),
+        friendlyErrorMessage(e,
+            fallback: 'Beispielkatalog konnte nicht entladen werden.'),
         type: AppNoticeType.error,
       );
     } finally {
@@ -214,7 +221,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text('Konto', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text('Konto',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Card(
             child: ListTile(
@@ -235,7 +243,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       content: Text(
                         ok
                             ? 'Verifizierungs-E-Mail wurde gesendet.'
-                            : (auth.error ?? 'Verifizierungs-E-Mail fehlgeschlagen.'),
+                            : (auth.error ??
+                                'Verifizierungs-E-Mail fehlgeschlagen.'),
                       ),
                     ),
                   );
@@ -245,47 +254,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           const SizedBox(height: 20),
-          const Text('Team', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text('Team',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Card(
             child: ListTile(
               leading: const Icon(Icons.groups_outlined),
               title: const Text('Workgroups'),
-              subtitle: const Text('Gemeinsame Gruppe erstellen oder beitreten'),
+              subtitle:
+                  const Text('Gemeinsame Gruppe erstellen oder beitreten'),
               onTap: () {
-                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const WorkgroupsScreen()));
+                Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const WorkgroupsScreen()));
               },
             ),
           ),
           const SizedBox(height: 20),
-          const Text('App-Einstellungen', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text('App-Einstellungen',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          RadioListTile<ThemeMode>(
-            value: ThemeMode.system,
-            groupValue: theme.themeMode,
-            title: const Text('Systemmodus'),
-            onChanged: (value) {
-              if (value != null) theme.setThemeMode(value);
-            },
-          ),
-          RadioListTile<ThemeMode>(
-            value: ThemeMode.light,
-            groupValue: theme.themeMode,
-            title: const Text('Light Mode'),
-            onChanged: (value) {
-              if (value != null) theme.setThemeMode(value);
-            },
-          ),
-          RadioListTile<ThemeMode>(
-            value: ThemeMode.dark,
-            groupValue: theme.themeMode,
-            title: const Text('Dark Mode'),
-            onChanged: (value) {
-              if (value != null) theme.setThemeMode(value);
-            },
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: SegmentedButton<ThemeMode>(
+                segments: const [
+                  ButtonSegment<ThemeMode>(
+                    value: ThemeMode.system,
+                    icon: Icon(Icons.settings_suggest_outlined),
+                    label: Text('System'),
+                  ),
+                  ButtonSegment<ThemeMode>(
+                    value: ThemeMode.light,
+                    icon: Icon(Icons.light_mode_outlined),
+                    label: Text('Hell'),
+                  ),
+                  ButtonSegment<ThemeMode>(
+                    value: ThemeMode.dark,
+                    icon: Icon(Icons.dark_mode_outlined),
+                    label: Text('Dunkel'),
+                  ),
+                ],
+                selected: {theme.themeMode},
+                onSelectionChanged: (selection) =>
+                    theme.setThemeMode(selection.first),
+              ),
+            ),
           ),
           const SizedBox(height: 20),
-          const Text('System & Cloud', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text('System & Cloud',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Card(
             child: Column(
@@ -293,7 +310,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 FutureBuilder<PackageInfo>(
                   future: _packageInfoFuture,
                   builder: (context, snapshot) {
-                    final versionText = snapshot.hasData ? snapshot.data!.version : 'Laedt...';
+                    final versionText =
+                        snapshot.hasData ? snapshot.data!.version : 'Lädt...';
                     return ListTile(
                       leading: const Icon(Icons.info_outline),
                       title: const Text('App-Version'),
@@ -311,8 +329,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.system_update_alt_outlined),
-                    title: const Text('Auf Update pruefen'),
-                    subtitle: const Text('Manuell pruefen und optional installieren'),
+                    title: const Text('Auf Update prüfen'),
+                    subtitle:
+                        const Text('Manuell prüfen und optional installieren'),
                     onTap: _checkingUpdate ? null : _checkForAppUpdate,
                   ),
                   const Divider(height: 1),
@@ -339,7 +358,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         )
                       : const Icon(Icons.playlist_remove_outlined),
                   title: const Text('Beispielkatalog entladen'),
-                  subtitle: const Text('Nur importierte Beispiel-Eintraege entfernen'),
+                  subtitle:
+                      const Text('Nur importierte Beispiel-Einträge entfernen'),
                   onTap: _unloadingSampleCatalog ? null : _unloadSampleCatalog,
                 ),
                 const Divider(height: 1),
@@ -351,9 +371,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   )
                 else
                   StreamBuilder(
-                    stream: FirebaseService.users.doc(uid).snapshots(includeMetadataChanges: true),
+                    stream: FirebaseService.users
+                        .doc(uid)
+                        .snapshots(includeMetadataChanges: true),
                     builder: (context, snapshot) {
-                      String statusText = 'Pruefe Verbindung...';
+                      String statusText = 'Prüfe Verbindung...';
                       IconData statusIcon = Icons.cloud_queue_outlined;
                       Color? statusColor;
 
@@ -400,7 +422,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               'Entwickler: Daniel Delfser',
               style: TextStyle(
                 fontSize: 10,
-                color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurfaceVariant
+                    .withValues(alpha: 0.8),
               ),
             ),
           ),

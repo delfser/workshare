@@ -1,4 +1,4 @@
-﻿import '../models/project_note.dart';
+import '../models/project_note.dart';
 import 'firebase_service.dart';
 
 class ProjectNoteService {
@@ -7,12 +7,12 @@ class ProjectNoteService {
         .where('projectId', isEqualTo: projectId)
         .snapshots()
         .map((snapshot) {
-          final notes = snapshot.docs
-              .map((doc) => ProjectNote.fromMap(doc.id, doc.data()))
-              .toList();
-          notes.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-          return notes;
-        });
+      final notes = snapshot.docs
+          .map((doc) => ProjectNote.fromMap(doc.id, doc.data()))
+          .toList();
+      notes.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      return notes;
+    });
   }
 
   Future<void> addNote({

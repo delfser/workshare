@@ -1,21 +1,73 @@
-﻿# WorkShare
+# WorkShare
 
-WorkShare ist eine Flutter-Android-App fuer Handwerker zur projektbezogenen Materialverwaltung mit Firebase-Live-Synchronisation.
+WorkShare ist eine Android-App fuer Teams auf der Baustelle.
 
-## Features V1
-- E-Mail/Passwort Login und Registrierung
-- Projektverwaltung (anlegen, bearbeiten, loeschen)
-- Projektrollen: `owner`, `admin`, `worker`, `viewer`
-- Mitglieder per E-Mail einladen
-- Materialverwaltung pro Projekt (CRUD) mit Live-Sync
-- Katalogverwaltung (CRUD) mit Prefix-Autocomplete (case-insensitive)
-- Einheit wird bei Katalogauswahl automatisch uebernommen
-- PDF-Export der Materialliste
-- Einstellungen mit Benutzerinfo, Light/Dark/Systemmodus und Logout
-- Firestore Offline-Cache (queued writes + Sync nach Netzrueckkehr)
+Mit WorkShare koennt ihr Projekte gemeinsam verwalten, Material live synchronisieren, Fotos hochladen und Teammitglieder kontrolliert einladen.
 
-## Architektur
-Siehe: `ARCHITECTURE.md`
+## Fuer Endbenutzer
+
+### 1. App installieren
+1. APK von eurem internen Link herunterladen.
+2. Auf Android installieren (bei Bedarf "Unbekannte Apps installieren" erlauben).
+3. App starten und Konto erstellen oder einloggen.
+
+### 2. Erste Schritte in der App
+1. Projekt mit `+` erstellen.
+2. Material im Projekt erfassen.
+3. Optional: Katalogeintraege anlegen, damit Materialvorschlaege schneller sind.
+4. Team per Einladung hinzufuegen.
+
+### 3. Einladungen (neu)
+- Einladungen erscheinen als Benachrichtigung (Glocke oben rechts in der Projektuebersicht).
+- Du kannst jede Einladung **annehmen** oder **ablehnen**.
+- Projekt- und Workgroup-Einladungen werden **nicht** mehr automatisch uebernommen.
+
+### 4. Update-Hinweise
+- In der App wird ein Update als Benachrichtigung gezeigt.
+- Der Hinweis wird pro Version nur **einmal** angezeigt.
+- Manuelle Update-Pruefung bleibt in `Einstellungen -> Auf Update pruefen`.
+
+### 5. Offline-Verhalten
+- Du kannst auch ohne Internet arbeiten.
+- Daten werden lokal zwischengespeichert und bei Internet automatisch synchronisiert.
+
+## Funktionen (Version 1.x)
+- Login/Registrierung mit E-Mail + Passwort
+- Projekte anlegen/bearbeiten/loeschen
+- Rollen pro Projekt: `owner`, `admin`, `worker`, `viewer`
+- Projektbeitritt per Projektcode
+- Projekt-Einladung per E-Mail mit Annahme/Ablehnung
+- Workgroups (Gruppen) inkl. Einladung per Code oder E-Mail
+- Materialverwaltung mit Live-Sync
+- Katalog mit Prefix-Autocomplete (case-insensitive)
+- PDF-Export fuer Materialliste
+- Foto-Tab im Projekt mit Cloud-Sync
+- Dark Mode / Light Mode / Systemmodus
+
+## Wichtige Hinweise fuer Teamleiter
+- Nur Mitglieder sehen Projektdaten.
+- Rechte werden ueber Firestore Security Rules erzwungen.
+- Bei Workgroup-Austritt koennen Projekte getrennt werden, damit jede Person unabhaengig weiterarbeiten kann.
+
+## Cloud-Setup (einmalig, Administrator)
+1. Firebase Projekt erstellen.
+2. Android App mit Paket-ID `com.workshare.workshare` registrieren.
+3. `google-services.json` nach `android/app/google-services.json` kopieren.
+4. Authentication aktivieren: E-Mail/Passwort.
+5. Firestore Database erstellen.
+6. Firebase Storage erstellen.
+7. Regeln deployen:
+   - `firebase deploy --only firestore:rules`
+   - `firebase deploy --only storage`
+
+## Entwickler-Setup (lokal)
+1. `flutter pub get`
+2. `flutterfire configure --platforms=android`
+3. `flutter run`
+
+## OTA (manuelle Updates)
+- OTA-Quelle kommt aus `version.json` (Server-URL in `lib/core/app_config.dart`).
+- App prueft optional auf neue Version und verlinkt auf die APK.
 
 ## Projektstruktur
 - `lib/models`
@@ -23,86 +75,12 @@ Siehe: `ARCHITECTURE.md`
 - `lib/providers`
 - `lib/screens`
 - `lib/widgets`
-- `lib/core`
-- `lib/utils`
 - `assets/seeds`
 
-## Voraussetzungen
-- Flutter SDK (stable)
-- Firebase CLI
-- FlutterFire CLI
-- Android Studio + Android SDK
-
-## Setup Schritt fuer Schritt
-1. Projektverzeichnis betreten:
-   - `cd workshare`
-2. Flutter-Projektdateien initialisieren (falls auf neuem Rechner noch nicht vorhanden):
-   - `flutter create . --org com.workshare --project-name workshare`
-3. Dependencies installieren:
-   - `flutter pub get`
-4. Firebase Projekt erstellen (Console) und Android App registrieren mit Paket-ID:
-   - `com.workshare.workshare`
-5. `google-services.json` nach `android/app/google-services.json` legen.
-6. FlutterFire konfigurieren:
-   - `flutterfire configure --platforms=android`
-7. Firestore Rules deployen:
-   - `firebase deploy --only firestore:rules`
-8. App starten:
-   - `flutter run`
-
-## Firestore Collections
-- `users`
-- `projects`
-- `project_members`
-- `materials`
-- `catalog_entries`
-- `invitations`
-
-## Pflichtfelder
-### materials
-- `id`, `projectId`, `name`, `quantity`, `unit`, `catalogEntryId?`, `note?`, `createdBy`, `createdAt`, `updatedAt`
-
-### catalog_entries
-- `id`, `name`, `nameLower`, `unit`, `category?`, `createdBy`, `isActive`, `createdAt`, `updatedAt`
-
-### invitations
-- `id`, `projectId`, `projectName`, `email`, `role`, `invitedBy`, `status`, `createdAt`, `acceptedAt?`
-
-### project_members
-- `id`, `projectId`, `userId`, `email`, `role`, `invitedBy?`, `joinedAt`
-
-## Wichtige Firestore Indexes
-In Firebase Console unter Firestore > Indexes anlegen:
-1. Collection `materials`
-   - `projectId` ASC
-   - `updatedAt` DESC
-2. Collection `catalog_entries`
-   - `isActive` ASC
-   - `nameLower` ASC
-
-## Security Rules
-- Datei: `firestore.rules`
-- Zugriff nur fuer authentifizierte Nutzer
-- Projektdaten nur fuer Projektmitglieder
-- Mitgliederverwaltung nur `owner/admin`
-- Material schreiben nur `owner/admin/worker`
-- `viewer` nur lesen
-
-## Seed fuer Katalogeintraege
-Beispieldaten:
-- `assets/seeds/catalog_entries.json`
-
-Optionales Seed-Skript (Node + Admin SDK):
-1. Admin SDK installieren:
-   - `npm i firebase-admin`
-2. Credentials setzen (`GOOGLE_APPLICATION_CREDENTIALS`)
-3. Seed ausfuehren:
-   - `node firebase/seed_catalog.js`
+## Sicherheit
+- Firestore Rules: `firestore.rules`
+- Storage Rules: `storage.rules`
 
 ## Branding
 - App-Name in der UI: **WorkShare**
-
-## Hinweise
-- Version 1 enthaelt absichtlich keine Arbeitszeiten-Exports und keine komplexe Kalkulation.
-- Katalogvorschlaege im Materialformular nutzen Prefix-Matching (`k` -> `k...`, `ka` -> `ka...`) und sind case-insensitive.
-
+- Entwickler: Daniel Delfser

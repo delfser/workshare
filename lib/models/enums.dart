@@ -1,6 +1,7 @@
-﻿enum ProjectRole { owner, admin, worker, viewer }
+enum ProjectRole { owner, admin, worker, viewer }
 
 enum InvitationStatus { pending, accepted, revoked }
+
 enum WorkgroupRole { owner, admin, member }
 
 extension ProjectRoleX on ProjectRole {

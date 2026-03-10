@@ -1,4 +1,4 @@
-﻿class AppUser {
+class AppUser {
   const AppUser({
     required this.id,
     required this.email,

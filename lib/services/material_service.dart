@@ -9,10 +9,12 @@ class MaterialService {
     required String normalizedNameLower,
     String? catalogEntryId,
   }) {
-    final existingNameLower = ((existingData['name'] as String?) ?? '').trim().toLowerCase();
+    final existingNameLower =
+        ((existingData['name'] as String?) ?? '').trim().toLowerCase();
     final existingCatalogId = existingData['catalogEntryId'] as String?;
 
-    final sameCatalog = catalogEntryId != null && existingCatalogId == catalogEntryId;
+    final sameCatalog =
+        catalogEntryId != null && existingCatalogId == catalogEntryId;
     final sameName = existingNameLower == normalizedNameLower;
 
     return sameCatalog || sameName;
@@ -20,7 +22,8 @@ class MaterialService {
 
   List<MaterialItem> _sortItems(List<MaterialItem> items, String sortMode) {
     if (sortMode == 'alpha') {
-      items.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      items
+          .sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     } else {
       items.sort((a, b) => a.createdAt.compareTo(b.createdAt));
     }
@@ -35,7 +38,9 @@ class MaterialService {
         .where('projectId', isEqualTo: projectId)
         .snapshots()
         .map((snapshot) => _sortItems(
-              snapshot.docs.map((doc) => MaterialItem.fromMap(doc.id, doc.data())).toList(),
+              snapshot.docs
+                  .map((doc) => MaterialItem.fromMap(doc.id, doc.data()))
+                  .toList(),
               sortMode,
             ));
   }
@@ -48,7 +53,9 @@ class MaterialService {
         .where('projectId', isEqualTo: projectId)
         .get()
         .timeout(const Duration(seconds: 15));
-    final items = snapshot.docs.map((doc) => MaterialItem.fromMap(doc.id, doc.data())).toList();
+    final items = snapshot.docs
+        .map((doc) => MaterialItem.fromMap(doc.id, doc.data()))
+        .toList();
     return _sortItems(items, sortMode);
   }
 

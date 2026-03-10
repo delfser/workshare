@@ -8,15 +8,19 @@ import '../models/enums.dart';
 import '../models/project.dart';
 import '../models/project_member.dart';
 import 'firebase_service.dart';
+import 'notification_service.dart';
 
 enum JoinByCodeResult { joined, alreadyMember }
 
 class ProjectService {
   static const _joinAlphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   final _random = Random.secure();
+  final _notificationService = NotificationService();
 
   String _generateJoinCode([int length = 6]) {
-    return List.generate(length, (_) => _joinAlphabet[_random.nextInt(_joinAlphabet.length)]).join();
+    return List.generate(
+            length, (_) => _joinAlphabet[_random.nextInt(_joinAlphabet.length)])
+        .join();
   }
 
   Future<String> _allocateUniqueJoinCode() async {
@@ -33,17 +37,20 @@ class ProjectService {
       // Offline fallback: still allow local create; collision risk is very low.
       return _generateJoinCode();
     }
-    throw StateError('Kein freier Projektcode verfuegbar.');
+    throw StateError('Kein freier Projektcode verfügbar.');
   }
 
   Stream<List<ProjectMember>> streamUserMemberships(String uid) {
     return FirebaseService.members
         .where('userId', isEqualTo: uid)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => ProjectMember.fromMap(doc.id, doc.data())).toList());
+        .map((snapshot) => snapshot.docs
+            .map((doc) => ProjectMember.fromMap(doc.id, doc.data()))
+            .toList());
   }
 
-  Stream<ProjectMember?> streamMembershipForProject({required String projectId, required String uid}) {
+  Stream<ProjectMember?> streamMembershipForProject(
+      {required String projectId, required String uid}) {
     final memberId = '${projectId}_$uid';
     return FirebaseService.members.doc(memberId).snapshots().map((doc) {
       if (!doc.exists || doc.data() == null) {
@@ -102,7 +109,8 @@ class ProjectService {
     final doc = FirebaseService.projects.doc();
     final code = await _allocateUniqueJoinCode();
     String? workgroupId;
-    List<QueryDocumentSnapshot<Map<String, dynamic>>> workgroupMembers = const [];
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> workgroupMembers =
+        const [];
     try {
       final ownerWorkgroupMembership = await FirebaseService.workgroupMembers
           .where('userId', isEqualTo: ownerId)
@@ -129,7 +137,8 @@ class ProjectService {
     batch.set(doc, {
       'id': doc.id,
       'name': name.trim(),
-      'description': description?.trim().isEmpty == true ? null : description?.trim(),
+      'description':
+          description?.trim().isEmpty == true ? null : description?.trim(),
       'ownerId': ownerId,
       'workgroupId': workgroupId,
       'projectCode': code,
@@ -156,16 +165,19 @@ class ProjectService {
       final email = ((data['email'] as String?) ?? '').toLowerCase();
       if (userId.isEmpty || userId == ownerId || email.isEmpty) continue;
       final projectMemberId = '${doc.id}_$userId';
-      batch.set(FirebaseService.members.doc(projectMemberId), {
-        'id': projectMemberId,
-        'projectId': doc.id,
-        'userId': userId,
-        'email': email,
-        'role': ProjectRole.owner.value,
-        'invitedBy': ownerId,
-        'joinedAt': now,
-        'sourceWorkgroupId': workgroupId,
-      }, SetOptions(merge: true));
+      batch.set(
+          FirebaseService.members.doc(projectMemberId),
+          {
+            'id': projectMemberId,
+            'projectId': doc.id,
+            'userId': userId,
+            'email': email,
+            'role': ProjectRole.owner.value,
+            'invitedBy': ownerId,
+            'joinedAt': now,
+            'sourceWorkgroupId': workgroupId,
+          },
+          SetOptions(merge: true));
     }
 
     batch.set(FirebaseService.projectJoinCodes.doc(code), {
@@ -185,7 +197,10 @@ class ProjectService {
     required String projectId,
     required String ownerId,
   }) async {
-    final projectDoc = await FirebaseService.projects.doc(projectId).get().timeout(const Duration(seconds: 15));
+    final projectDoc = await FirebaseService.projects
+        .doc(projectId)
+        .get()
+        .timeout(const Duration(seconds: 15));
     if (!projectDoc.exists || projectDoc.data() == null) {
       throw StateError('Projekt nicht gefunden.');
     }
@@ -225,9 +240,12 @@ class ProjectService {
       throw StateError('Bitte Projektcode eingeben.');
     }
 
-    final codeDoc = await FirebaseService.projectJoinCodes.doc(normalizedCode).get().timeout(const Duration(seconds: 15));
+    final codeDoc = await FirebaseService.projectJoinCodes
+        .doc(normalizedCode)
+        .get()
+        .timeout(const Duration(seconds: 15));
     if (!codeDoc.exists || codeDoc.data() == null) {
-      throw StateError('Projektcode ungueltig.');
+      throw StateError('Projektcode ungültig.');
     }
     final data = codeDoc.data()!;
     final active = data['isActive'] as bool? ?? true;
@@ -239,23 +257,10 @@ class ProjectService {
       throw StateError('Projektcode ist fehlerhaft.');
     }
 
-    final projectDoc = await FirebaseService.projects.doc(projectId).get().timeout(const Duration(seconds: 15));
-    final projectData = projectDoc.data();
-    final projectWorkgroupId = projectData?['workgroupId'] as String?;
-    var joinRole = ProjectRole.worker.value;
-    if (projectWorkgroupId != null && projectWorkgroupId.isNotEmpty) {
-      final wgMemberId = '${projectWorkgroupId}_$userId';
-      final wgMembership = await FirebaseService.workgroupMembers.doc(wgMemberId).get().timeout(
-            const Duration(seconds: 15),
-          );
-      if (wgMembership.exists) {
-        joinRole = ProjectRole.owner.value;
-      }
-    }
-
     final memberId = '${projectId}_$userId';
     final memberRef = FirebaseService.members.doc(memberId);
-    final memberDoc = await memberRef.get().timeout(const Duration(seconds: 15));
+    final memberDoc =
+        await memberRef.get().timeout(const Duration(seconds: 15));
     if (memberDoc.exists) {
       return JoinByCodeResult.alreadyMember;
     }
@@ -265,11 +270,22 @@ class ProjectService {
       'projectId': projectId,
       'userId': userId,
       'email': email.toLowerCase(),
-      'role': joinRole,
+      'role': ProjectRole.worker.value,
       'invitedBy': null,
       'joinCode': normalizedCode,
       'joinedAt': FirebaseService.now(),
     }).timeout(const Duration(seconds: 15));
+
+    final ownerId = (data['ownerId'] as String?) ?? '';
+    if (ownerId.isNotEmpty && ownerId != userId) {
+      await _notificationService.createNotification(
+        userId: ownerId,
+        title: 'Neuer Projektbeitritt',
+        message: '${email.toLowerCase()} ist per Projektcode beigetreten.',
+        type: 'project_joined',
+        projectId: projectId,
+      );
+    }
 
     return JoinByCodeResult.joined;
   }
@@ -281,7 +297,8 @@ class ProjectService {
   }) async {
     await FirebaseService.projects.doc(projectId).update({
       'name': name.trim(),
-      'description': description?.trim().isEmpty == true ? null : description?.trim(),
+      'description':
+          description?.trim().isEmpty == true ? null : description?.trim(),
       'updatedAt': FirebaseService.now(),
     });
   }
@@ -290,29 +307,27 @@ class ProjectService {
     required String projectId,
     required bool archived,
   }) {
-    return FirebaseService.projects
-        .doc(projectId)
-        .update({
-          'archived': archived,
-          'updatedAt': FirebaseService.now(),
-        });
+    return FirebaseService.projects.doc(projectId).update({
+      'archived': archived,
+      'updatedAt': FirebaseService.now(),
+    });
   }
 
   Future<void> setMaterialSortMode({
     required String projectId,
     required String sortMode,
   }) {
-    return FirebaseService.projects
-        .doc(projectId)
-        .update({
-          'materialSortMode': sortMode,
-          'updatedAt': FirebaseService.now(),
-        });
+    return FirebaseService.projects.doc(projectId).update({
+      'materialSortMode': sortMode,
+      'updatedAt': FirebaseService.now(),
+    });
   }
 
   Future<void> deleteProject(String projectId) async {
-    final members =
-        await FirebaseService.members.where('projectId', isEqualTo: projectId).get().timeout(const Duration(seconds: 15));
+    final members = await FirebaseService.members
+        .where('projectId', isEqualTo: projectId)
+        .get()
+        .timeout(const Duration(seconds: 15));
     final materials = await FirebaseService.materials
         .where('projectId', isEqualTo: projectId)
         .get()
@@ -347,7 +362,9 @@ class ProjectService {
     return FirebaseService.members
         .where('projectId', isEqualTo: projectId)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => ProjectMember.fromMap(doc.id, doc.data())).toList()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => ProjectMember.fromMap(doc.id, doc.data()))
+            .toList()
           ..sort((a, b) => a.email.compareTo(b.email)));
   }
 
@@ -360,9 +377,41 @@ class ProjectService {
     return FirebaseService.members.doc(memberId).update({'role': role.value});
   }
 
-  Future<void> removeMember({required String projectId, required String userId}) {
+  Future<void> removeMember(
+      {required String projectId, required String userId}) async {
+    final actorUid = FirebaseService.auth.currentUser?.uid;
+    final actorEmail =
+        (FirebaseService.auth.currentUser?.email ?? '').trim().toLowerCase();
+    final projectDoc = await FirebaseService.projects
+        .doc(projectId)
+        .get()
+        .timeout(const Duration(seconds: 15));
+    final projectData = projectDoc.data();
+    final ownerId = (projectData?['ownerId'] as String?) ?? '';
+
+    if (actorUid == userId) {
+      if (ownerId.isNotEmpty && ownerId != actorUid) {
+        await _notificationService.createNotification(
+          userId: ownerId,
+          title: 'Mitglied hat Projekt verlassen',
+          message:
+              '${actorEmail.isEmpty ? 'Ein Mitglied' : actorEmail} hat das Projekt verlassen.',
+          type: 'project_left',
+          projectId: projectId,
+        );
+      }
+    } else {
+      await _notificationService.createNotification(
+        userId: userId,
+        title: 'Aus Projekt entfernt',
+        message: 'Du wurdest aus einem Projekt entfernt.',
+        type: 'project_removed',
+        projectId: projectId,
+      );
+    }
+
     final memberId = '${projectId}_$userId';
-    return FirebaseService.members.doc(memberId).delete();
+    await FirebaseService.members.doc(memberId).delete();
   }
 
   Future<void> promoteSelfToOwnerForWorkgroupProjects({
@@ -380,18 +429,24 @@ class ProjectService {
       final projectId = data['projectId'] as String? ?? '';
       if (projectId.isEmpty) continue;
 
-      final project = await FirebaseService.projects.doc(projectId).get().timeout(const Duration(seconds: 15));
+      final project = await FirebaseService.projects
+          .doc(projectId)
+          .get()
+          .timeout(const Duration(seconds: 15));
       final projectData = project.data();
       final workgroupId = projectData?['workgroupId'] as String?;
       if (workgroupId == null || workgroupId.isEmpty) continue;
 
       final wgMemberId = '${workgroupId}_$userId';
-      final wgMembership = await FirebaseService.workgroupMembers.doc(wgMemberId).get().timeout(
-            const Duration(seconds: 15),
-          );
+      final wgMembership =
+          await FirebaseService.workgroupMembers.doc(wgMemberId).get().timeout(
+                const Duration(seconds: 15),
+              );
       if (!wgMembership.exists) continue;
 
-      await memberDoc.reference.update({'role': ProjectRole.owner.value}).timeout(const Duration(seconds: 15));
+      await memberDoc.reference
+          .update({'role': ProjectRole.owner.value}).timeout(
+              const Duration(seconds: 15));
     }
   }
 }

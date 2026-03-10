@@ -30,7 +30,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _submit(AuthProvider auth) async {
     if (!_formKey.currentState!.validate()) return;
-    final ok = await auth.register(_emailCtrl.text, _passwordCtrl.text, _nameCtrl.text);
+    final ok = await auth.register(
+        _emailCtrl.text, _passwordCtrl.text, _nameCtrl.text);
     if (!mounted) return;
 
     if (ok) {
@@ -43,7 +44,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Navigator.pop(context);
       }
     } else {
-      showAppNotice(context, auth.error ?? 'Registrierung fehlgeschlagen.', type: AppNoticeType.error);
+      showAppNotice(context, auth.error ?? 'Registrierung fehlgeschlagen.',
+          type: AppNoticeType.error);
     }
   }
 
@@ -55,7 +57,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         return LoadingOverlay(
           loading: auth.isLoading,
           child: Scaffold(
-            appBar: AppBar(title: const WorkShareAppBarTitle('WorkShare Registrierung')),
+            appBar: AppBar(
+                title: const WorkShareAppBarTitle('WorkShare Registrierung')),
             body: SafeArea(
               child: Form(
                 key: _formKey,
@@ -71,7 +74,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     TextFormField(
                       controller: _nameCtrl,
                       decoration: const InputDecoration(labelText: 'Name'),
-                      validator: (v) => Validators.requiredText(v, label: 'Name'),
+                      validator: (v) =>
+                          Validators.requiredText(v, label: 'Name'),
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
@@ -85,7 +89,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       obscureText: true,
                       decoration: const InputDecoration(labelText: 'Passwort'),
                       validator: (v) {
-                        if (v == null || v.length < 6) return 'Mindestens 6 Zeichen';
+                        if (v == null || v.length < 6) {
+                          return 'Mindestens 6 Zeichen';
+                        }
                         return null;
                       },
                     ),
@@ -107,4 +113,3 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
-

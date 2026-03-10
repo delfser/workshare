@@ -1,4 +1,4 @@
-﻿class MaterialItem {
+class MaterialItem {
   const MaterialItem({
     required this.id,
     required this.projectId,

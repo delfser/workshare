@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/catalog_entry.dart';
@@ -36,7 +36,8 @@ class _CatalogEntryFormScreenState extends State<CatalogEntryFormScreen> {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.entry?.name ?? '');
     _categoryCtrl = TextEditingController(text: widget.entry?.category ?? '');
-    _selectedUnit = _units.contains(widget.entry?.unit) ? widget.entry!.unit : 'stk';
+    _selectedUnit =
+        _units.contains(widget.entry?.unit) ? widget.entry!.unit : 'stk';
     _isActive = widget.entry?.isActive ?? true;
   }
 
@@ -63,7 +64,8 @@ class _CatalogEntryFormScreenState extends State<CatalogEntryFormScreen> {
           isActive: _isActive,
         );
       } else {
-        final defaultWorkgroupId = await _service.getDefaultWorkgroupIdForUser(user.uid);
+        final defaultWorkgroupId =
+            await _service.getDefaultWorkgroupIdForUser(user.uid);
         await _service.createEntry(
           name: _nameCtrl.text,
           unit: _selectedUnit,
@@ -76,14 +78,18 @@ class _CatalogEntryFormScreenState extends State<CatalogEntryFormScreen> {
         Navigator.pop(context);
         showAppNotice(
           context,
-          _isEdit ? 'Katalogeintrag wurde aktualisiert.' : 'Katalogeintrag wurde erstellt.',
+          _isEdit
+              ? 'Katalogeintrag wurde aktualisiert.'
+              : 'Katalogeintrag wurde erstellt.',
           type: AppNoticeType.success,
         );
       }
     } catch (e) {
+      if (!mounted) return;
       showAppNotice(
         context,
-        friendlyErrorMessage(e, fallback: 'Katalogeintrag konnte nicht gespeichert werden.'),
+        friendlyErrorMessage(e,
+            fallback: 'Katalogeintrag konnte nicht gespeichert werden.'),
         type: AppNoticeType.error,
       );
     } finally {
@@ -98,12 +104,15 @@ class _CatalogEntryFormScreenState extends State<CatalogEntryFormScreen> {
       await _service.deleteEntry(widget.entry!.id);
       if (mounted) {
         Navigator.pop(context);
-        showAppNotice(context, 'Katalogeintrag wurde geloescht.', type: AppNoticeType.success);
+        showAppNotice(context, 'Katalogeintrag wurde gelöscht.',
+            type: AppNoticeType.success);
       }
     } catch (e) {
+      if (!mounted) return;
       showAppNotice(
         context,
-        friendlyErrorMessage(e, fallback: 'Katalogeintrag konnte nicht geloescht werden.'),
+        friendlyErrorMessage(e,
+            fallback: 'Katalogeintrag konnte nicht gelöscht werden.'),
         type: AppNoticeType.error,
       );
     } finally {
@@ -117,9 +126,13 @@ class _CatalogEntryFormScreenState extends State<CatalogEntryFormScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEdit ? 'Katalogeintrag bearbeiten' : 'Katalogeintrag anlegen'),
+        title: Text(
+            _isEdit ? 'Katalogeintrag bearbeiten' : 'Katalogeintrag anlegen'),
         actions: [
-          if (_isEdit) IconButton(onPressed: _busy ? null : _delete, icon: const Icon(Icons.delete_outline)),
+          if (_isEdit)
+            IconButton(
+                onPressed: _busy ? null : _delete,
+                icon: const Icon(Icons.delete_outline)),
         ],
       ),
       body: IgnorePointer(
@@ -137,10 +150,12 @@ class _CatalogEntryFormScreenState extends State<CatalogEntryFormScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: _selectedUnit,
-                  decoration: const InputDecoration(labelText: 'Standard-Einheit'),
+                  initialValue: _selectedUnit,
+                  decoration:
+                      const InputDecoration(labelText: 'Standard-Einheit'),
                   items: _units
-                      .map((u) => DropdownMenuItem<String>(value: u, child: Text(u)))
+                      .map((u) =>
+                          DropdownMenuItem<String>(value: u, child: Text(u)))
                       .toList(),
                   onChanged: (value) {
                     if (value != null) setState(() => _selectedUnit = value);
@@ -149,7 +164,8 @@ class _CatalogEntryFormScreenState extends State<CatalogEntryFormScreen> {
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _categoryCtrl,
-                  decoration: const InputDecoration(labelText: 'Kategorie (optional)'),
+                  decoration:
+                      const InputDecoration(labelText: 'Kategorie (optional)'),
                 ),
                 const SizedBox(height: 8),
                 SwitchListTile(

@@ -41,28 +41,31 @@ class _NoteFormScreenState extends State<NoteFormScreen> {
       var queuedOffline = false;
       await _service
           .addNote(
-            projectId: widget.project.id,
-            text: _textCtrl.text.trim(),
-            createdBy: user.uid,
-          )
+        projectId: widget.project.id,
+        text: _textCtrl.text.trim(),
+        createdBy: user.uid,
+      )
           .timeout(
-            const Duration(milliseconds: 1200),
-            onTimeout: () {
-              queuedOffline = true;
-            },
-          );
+        const Duration(milliseconds: 1200),
+        onTimeout: () {
+          queuedOffline = true;
+        },
+      );
       if (!mounted) return;
       Navigator.pop(context);
       showAppNotice(
         context,
-        queuedOffline ? 'Offline gespeichert. Sync folgt automatisch.' : 'Notiz gespeichert.',
+        queuedOffline
+            ? 'Offline gespeichert. Sync folgt automatisch.'
+            : 'Notiz gespeichert.',
         type: AppNoticeType.success,
       );
     } catch (e) {
       if (!mounted) return;
       showAppNotice(
         context,
-        friendlyErrorMessage(e, fallback: 'Notiz konnte nicht gespeichert werden.'),
+        friendlyErrorMessage(e,
+            fallback: 'Notiz konnte nicht gespeichert werden.'),
         type: AppNoticeType.error,
       );
     } finally {
@@ -73,7 +76,7 @@ class _NoteFormScreenState extends State<NoteFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Notiz hinzufügen')),
+      appBar: AppBar(title: const Text('Notiz hinzufuegen')),
       body: IgnorePointer(
         ignoring: _busy,
         child: ListView(
@@ -85,8 +88,13 @@ class _NoteFormScreenState extends State<NoteFormScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(
-                        Theme.of(context).brightness == Brightness.dark ? 0.22 : 0.45,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .surfaceContainerHighest
+                      .withValues(
+                        alpha: Theme.of(context).brightness == Brightness.dark
+                            ? 0.22
+                            : 0.45,
                       ),
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -97,7 +105,8 @@ class _NoteFormScreenState extends State<NoteFormScreen> {
                       minLines: 3,
                       maxLines: 8,
                       decoration: const InputDecoration(labelText: 'Notiz'),
-                      validator: (v) => Validators.requiredText(v, label: 'Notiz'),
+                      validator: (v) =>
+                          Validators.requiredText(v, label: 'Notiz'),
                     ),
                     const SizedBox(height: 16),
                     Align(

@@ -1,4 +1,4 @@
-﻿class ProjectNote {
+class ProjectNote {
   const ProjectNote({
     required this.id,
     required this.projectId,

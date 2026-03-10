@@ -1,4 +1,4 @@
-﻿class AppConfig {
+class AppConfig {
   const AppConfig._();
 
   // OTA aktiviert, aber nur manuell ueber Einstellungen.

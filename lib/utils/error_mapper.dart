@@ -1,4 +1,3 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 String friendlyErrorMessage(Object error, {String? fallback}) {
@@ -10,13 +9,13 @@ String friendlyErrorMessage(Object error, {String? fallback}) {
       case 'user-not-found':
         return 'Kein Konto mit dieser E-Mail gefunden.';
       case 'invalid-email':
-        return 'Die E-Mail-Adresse ist ungueltig.';
+        return 'Die E-Mail-Adresse ist ungültig.';
       case 'email-already-in-use':
         return 'Diese E-Mail wird bereits verwendet.';
       case 'weak-password':
         return 'Das Passwort ist zu schwach.';
       case 'network-request-failed':
-        return 'Netzwerkfehler. Bitte Internetverbindung pruefen.';
+        return 'Netzwerkfehler. Bitte Internetverbindung prüfen.';
       default:
         return fallback ?? 'Aktion fehlgeschlagen. Bitte erneut versuchen.';
     }
@@ -25,9 +24,9 @@ String friendlyErrorMessage(Object error, {String? fallback}) {
   if (error is FirebaseException) {
     switch (error.code) {
       case 'permission-denied':
-        return 'Keine Berechtigung fuer diese Aktion.';
+        return 'Keine Berechtigung für diese Aktion.';
       case 'unavailable':
-        return 'Dienst aktuell nicht verfuegbar. Bitte spaeter erneut versuchen.';
+        return 'Dienst aktuell nicht verfügbar. Bitte später erneut versuchen.';
       case 'not-found':
         return 'Eintrag wurde nicht gefunden.';
       case 'already-exists':

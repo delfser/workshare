@@ -9,3 +9,9 @@ android/app/google-services.json
 # Android release signing
 android/key.properties
 android/upload-keystore.jks
+# Local Play Store/testing artifacts
+playstore_assets/
+playstore_assets_app_only/
+playstore_testers.csv
+playstore_testers_oneline.csv
+release/

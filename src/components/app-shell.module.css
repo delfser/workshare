@@ -1,0 +1,343 @@
+.shell {
+  min-height: 100vh;
+  padding: 40px 28px;
+}
+
+.loginCard,
+.setupCard,
+.centerCard,
+.dashboard {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.loginCard,
+.setupCard,
+.centerCard,
+.panel,
+.metricCard,
+.projectCard {
+  background: var(--bg-elevated);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--surface-border);
+  box-shadow: var(--surface-shadow);
+}
+
+.loginCard,
+.setupCard,
+.centerCard {
+  max-width: 760px;
+  border-radius: 28px;
+  padding: 32px;
+}
+
+.loginCard {
+  margin-top: 72px;
+}
+
+.brandRow {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+}
+
+.logo {
+  border-radius: 22px;
+}
+
+.kicker {
+  margin: 0 0 10px;
+  color: var(--brand);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.subtle {
+  color: var(--text-muted);
+}
+
+.setupText,
+.setupHint {
+  margin-top: 18px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.codeBlock {
+  margin-top: 24px;
+  padding: 18px 20px;
+  border-radius: 20px;
+  background: #10203a;
+  color: #dce6f8;
+  font-family: ui-monospace, "Cascadia Code", "SFMono-Regular", monospace;
+  font-size: 0.92rem;
+  line-height: 1.8;
+}
+
+.form {
+  margin-top: 30px;
+  display: grid;
+  gap: 18px;
+}
+
+.field {
+  display: grid;
+  gap: 9px;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.field input {
+  border: 1px solid rgba(61, 95, 151, 0.2);
+  border-radius: 18px;
+  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text);
+  outline: none;
+}
+
+.field input:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 4px rgba(61, 95, 151, 0.12);
+}
+
+.primaryButton,
+.secondaryButton,
+.segment,
+.segmentActive {
+  border: none;
+  border-radius: 18px;
+  padding: 14px 18px;
+  cursor: pointer;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease;
+}
+
+.primaryButton:hover,
+.secondaryButton:hover,
+.segment:hover,
+.segmentActive:hover {
+  transform: translateY(-1px);
+}
+
+.primaryButton {
+  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+  color: white;
+  font-weight: 800;
+  box-shadow: 0 14px 30px rgba(40, 75, 131, 0.24);
+}
+
+.secondaryButton,
+.segment {
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--text);
+  border: 1px solid rgba(61, 95, 151, 0.18);
+}
+
+.segmentActive {
+  background: var(--accent);
+  color: var(--brand-strong);
+  border: 1px solid rgba(61, 95, 151, 0.24);
+  font-weight: 800;
+}
+
+.error {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.dashboard {
+  display: grid;
+  gap: 22px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+  padding: 26px 30px;
+  border-radius: 30px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.85),
+    rgba(230, 238, 250, 0.78)
+  );
+  border: 1px solid rgba(61, 95, 151, 0.15);
+  box-shadow: var(--surface-shadow);
+}
+
+.headerTitle {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.metricCard {
+  padding: 18px 20px;
+  border-radius: 24px;
+}
+
+.metricCard span {
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: 10px;
+}
+
+.metricCard strong {
+  font-family: var(--font-heading), sans-serif;
+  font-size: 2rem;
+}
+
+.panel {
+  border-radius: 30px;
+  padding: 26px;
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: end;
+  margin-bottom: 20px;
+}
+
+.projectGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.projectCard {
+  border-radius: 24px;
+  padding: 20px;
+  display: grid;
+  gap: 14px;
+}
+
+.projectTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+}
+
+.projectTop h3,
+.panelHeader h2,
+.brandRow h1,
+.centerCard h1 {
+  margin: 0;
+  font-family: var(--font-heading), sans-serif;
+  letter-spacing: -0.03em;
+}
+
+.description {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.badge,
+.badgeMuted {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.badge {
+  background: rgba(45, 122, 86, 0.12);
+  color: var(--success);
+}
+
+.badgeMuted {
+  background: rgba(182, 124, 41, 0.12);
+  color: var(--warning);
+}
+
+.projectMeta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.projectMeta div {
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.projectMeta dt {
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  margin-bottom: 6px;
+}
+
+.projectMeta dd {
+  margin: 0;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.emptyState {
+  padding: 26px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--text-muted);
+}
+
+@media (max-width: 980px) {
+  .metrics,
+  .projectGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .header,
+  .panelHeader {
+    align-items: start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 640px) {
+  .shell {
+    padding: 18px;
+  }
+
+  .loginCard,
+  .setupCard,
+  .centerCard,
+  .panel {
+    padding: 22px;
+  }
+
+  .brandRow,
+  .headerTitle {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .projectMeta {
+    grid-template-columns: 1fr;
+  }
+}

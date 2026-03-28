@@ -241,8 +241,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 FutureBuilder<PackageInfo>(
                   future: _packageInfoFuture,
                   builder: (context, snapshot) {
-                    final versionText =
-                        snapshot.hasData ? snapshot.data!.version : 'LÃ¤dt...';
+                    final versionText = snapshot.hasData
+                        ? '${snapshot.data!.version} (${snapshot.data!.buildNumber})'
+                        : 'LÃ¤dt...';
                     return ListTile(
                       leading: const Icon(Icons.info_outline),
                       title: const Text('App-Version'),

@@ -18,13 +18,11 @@ class AuthService {
       await user.reload().timeout(const Duration(seconds: 8));
       return true;
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'user-disabled' ||
-          e.code == 'user-not-found' ||
-          e.code == 'invalid-user-token' ||
-          e.code == 'user-token-expired') {
+      if (e.code == 'user-disabled' || e.code == 'user-not-found') {
         return false;
       }
-      // Transient auth/network/provider errors must not auto-sign out users.
+      // Transient auth/network/provider/token-refresh errors must not auto-sign
+      // out users in production builds.
       return true;
     } on TimeoutException {
       // Network hiccups should not force logout.

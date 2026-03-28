@@ -26,7 +26,7 @@ class AuthProvider extends ChangeNotifier {
 
   StreamSubscription<User?>? _sub;
   StreamSubscription<int>? _pendingInvitationsSub;
-  Timer? _sessionGuardTimer;
+  bool _sessionValidationRunning = false;
   User? _user;
   bool _loading = false;
   String? _error;
@@ -37,8 +37,6 @@ class AuthProvider extends ChangeNotifier {
   String? get error => _error;
 
   Future<void> _onAuthChanged(User? user) async {
-    _sessionGuardTimer?.cancel();
-    _sessionGuardTimer = null;
     await _pendingInvitationsSub?.cancel();
     _pendingInvitationsSub = null;
     _user = user;
@@ -46,12 +44,12 @@ class AuthProvider extends ChangeNotifier {
 
     final userEmail = user?.email ?? '';
     if (userEmail.isNotEmpty) {
-      _startSessionGuard();
       try {
         await _authService.ensureUserProfile(user!);
       } catch (_) {
         // Profil-Sync darf Loginfluss nicht blockieren.
       }
+      unawaited(validateCurrentSession());
       unawaited(_runNotificationCleanup(user!.uid));
       _pendingInvitationsSub = _invitationService
           .streamPendingInvitationCount(userEmail)
@@ -61,21 +59,22 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  void _startSessionGuard() {
-    _sessionGuardTimer = Timer.periodic(const Duration(seconds: 20), (_) async {
-      final current = _user;
-      if (current == null) return;
-      try {
-        final valid = await _authService.verifyCurrentUserStillValid();
-        if (!valid) {
-          _error = 'Konto deaktiviert oder gelöscht. Du wurdest abgemeldet.';
-          notifyListeners();
-          await _authService.logout();
-        }
-      } catch (_) {
-        // Ignore transient errors and retry on next cycle.
+  Future<void> validateCurrentSession() async {
+    if (_sessionValidationRunning) return;
+    if (_user == null) return;
+    _sessionValidationRunning = true;
+    try {
+      final valid = await _authService.verifyCurrentUserStillValid();
+      if (!valid) {
+        _error = 'Konto deaktiviert oder gelöscht. Du wurdest abgemeldet.';
+        notifyListeners();
+        await _authService.logout();
       }
-    });
+    } catch (_) {
+      // Transiente Fehler sollen keine Abmeldung auslösen.
+    } finally {
+      _sessionValidationRunning = false;
+    }
   }
 
   Future<bool> login(String email, String password) async {
@@ -216,7 +215,6 @@ class AuthProvider extends ChangeNotifier {
   void dispose() {
     _sub?.cancel();
     _pendingInvitationsSub?.cancel();
-    _sessionGuardTimer?.cancel();
     super.dispose();
   }
 }

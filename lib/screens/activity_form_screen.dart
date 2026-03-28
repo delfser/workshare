@@ -4,59 +4,44 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/project.dart';
-import '../models/work_log.dart';
+import '../models/project_note.dart';
 import '../providers/auth_provider.dart';
-import '../services/work_log_service.dart';
+import '../services/project_note_service.dart';
 import '../utils/app_notice.dart';
 import '../utils/error_mapper.dart';
 import '../utils/validators.dart';
 
-class WorkLogFormScreen extends StatefulWidget {
-  const WorkLogFormScreen({
+class ActivityFormScreen extends StatefulWidget {
+  const ActivityFormScreen({
     super.key,
     required this.project,
-    this.workLog,
+    this.activity,
   });
 
   final Project project;
-  final WorkLog? workLog;
+  final ProjectNote? activity;
 
   @override
-  State<WorkLogFormScreen> createState() => _WorkLogFormScreenState();
+  State<ActivityFormScreen> createState() => _ActivityFormScreenState();
 }
 
-class _WorkLogFormScreenState extends State<WorkLogFormScreen> {
+class _ActivityFormScreenState extends State<ActivityFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _hoursCtrl = TextEditingController();
-  final _workerCtrl = TextEditingController();
-  final _service = WorkLogService();
+  final _textCtrl = TextEditingController();
+  final _service = ProjectNoteService();
   bool _busy = false;
 
-  bool get _isEdit => widget.workLog != null;
-
-  String _formatNumber(double value) {
-    if (value == value.roundToDouble()) {
-      return value.toInt().toString();
-    }
-    return value
-        .toStringAsFixed(2)
-        .replaceAll(RegExp(r'0+$'), '')
-        .replaceAll(RegExp(r'\.$'), '');
-  }
+  bool get _isEdit => widget.activity != null;
 
   @override
   void initState() {
     super.initState();
-    if (widget.workLog != null) {
-      _hoursCtrl.text = _formatNumber(widget.workLog!.hours);
-      _workerCtrl.text = widget.workLog!.worker;
-    }
+    _textCtrl.text = widget.activity?.text ?? '';
   }
 
   @override
   void dispose() {
-    _hoursCtrl.dispose();
-    _workerCtrl.dispose();
+    _textCtrl.dispose();
     super.dispose();
   }
 
@@ -65,22 +50,14 @@ class _WorkLogFormScreenState extends State<WorkLogFormScreen> {
     final user = context.read<AuthProvider>().user;
     if (user == null) return;
 
-    final hours = double.tryParse(_hoursCtrl.text.replaceAll(',', '.'));
-    if (hours == null || hours <= 0) {
-      showAppNotice(context, 'Bitte gueltige Stunden eingeben.',
-          type: AppNoticeType.error);
-      return;
-    }
-
     setState(() => _busy = true);
     try {
       var queuedOffline = false;
       if (_isEdit) {
         await _service
-            .updateWorkLog(
-          id: widget.workLog!.id,
-          hours: hours,
-          worker: _workerCtrl.text.trim(),
+            .updateNote(
+          noteId: widget.activity!.id,
+          text: _textCtrl.text.trim(),
         )
             .timeout(
           const Duration(milliseconds: 1200),
@@ -90,11 +67,11 @@ class _WorkLogFormScreenState extends State<WorkLogFormScreen> {
         );
       } else {
         await _service
-            .addWorkLog(
+            .addNote(
           projectId: widget.project.id,
-          hours: hours,
-          worker: _workerCtrl.text.trim(),
+          text: _textCtrl.text.trim(),
           createdBy: user.uid,
+          type: 'activity',
         )
             .timeout(
           const Duration(milliseconds: 1200),
@@ -110,8 +87,8 @@ class _WorkLogFormScreenState extends State<WorkLogFormScreen> {
         queuedOffline
             ? 'Offline gespeichert. Sync folgt automatisch.'
             : _isEdit
-                ? 'Arbeitszeit aktualisiert.'
-                : 'Arbeitszeit gespeichert.',
+                ? 'Tätigkeit aktualisiert.'
+                : 'Tätigkeit gespeichert.',
         type: AppNoticeType.success,
       );
     } catch (e) {
@@ -121,8 +98,8 @@ class _WorkLogFormScreenState extends State<WorkLogFormScreen> {
         friendlyErrorMessage(
           e,
           fallback: _isEdit
-              ? 'Arbeitszeit konnte nicht aktualisiert werden.'
-              : 'Arbeitszeit konnte nicht gespeichert werden.',
+              ? 'Tätigkeit konnte nicht aktualisiert werden.'
+              : 'Tätigkeit konnte nicht gespeichert werden.',
         ),
         type: AppNoticeType.error,
       );
@@ -135,8 +112,7 @@ class _WorkLogFormScreenState extends State<WorkLogFormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title:
-            Text(_isEdit ? 'Arbeitszeit bearbeiten' : 'Arbeitszeit hinzufügen'),
+        title: Text(_isEdit ? 'Tätigkeit bearbeiten' : 'Tätigkeit hinzufügen'),
       ),
       body: IgnorePointer(
         ignoring: _busy,
@@ -162,19 +138,12 @@ class _WorkLogFormScreenState extends State<WorkLogFormScreen> {
                 child: Column(
                   children: [
                     TextFormField(
-                      controller: _hoursCtrl,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(labelText: 'Stunden'),
+                      controller: _textCtrl,
+                      minLines: 2,
+                      maxLines: 6,
+                      decoration: const InputDecoration(labelText: 'Tätigkeit'),
                       validator: (v) =>
-                          Validators.positiveNumber(v, label: 'Stunden'),
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _workerCtrl,
-                      decoration: const InputDecoration(labelText: 'Arbeiter'),
-                      validator: (v) =>
-                          Validators.requiredText(v, label: 'Arbeiter'),
+                          Validators.requiredText(v, label: 'Tätigkeit'),
                     ),
                     const SizedBox(height: 16),
                     Align(

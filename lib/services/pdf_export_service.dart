@@ -20,6 +20,7 @@ class PdfExportService {
 
   Future<Uint8List> buildMaterialPdf({
     required String projectName,
+    List<String> activities = const [],
     required List<MaterialItem> materials,
     List<WorkLog> workLogs = const [],
   }) async {
@@ -72,6 +73,23 @@ class PdfExportService {
             pw.Text('Projekt: $projectName'),
             pw.Text('Erstellt am: $date'),
             pw.SizedBox(height: 16),
+            if (activities.isNotEmpty) ...[
+              pw.Text(
+                'Tätigkeiten',
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              ),
+              pw.SizedBox(height: 8),
+              ...activities
+                  .map((activity) => activity.trim())
+                  .where((activity) => activity.isNotEmpty)
+                  .map(
+                    (activity) => pw.Padding(
+                      padding: const pw.EdgeInsets.only(bottom: 4),
+                      child: pw.Text('- $activity'),
+                    ),
+                  ),
+              pw.SizedBox(height: 14),
+            ],
             pw.Text('Materialien',
                 style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 8),
@@ -146,11 +164,13 @@ class PdfExportService {
 
   Future<void> shareMaterialPdf({
     required String projectName,
+    List<String> activities = const [],
     required List<MaterialItem> materials,
     List<WorkLog> workLogs = const [],
   }) async {
     final bytes = await buildMaterialPdf(
       projectName: projectName,
+      activities: activities,
       materials: materials,
       workLogs: workLogs,
     );

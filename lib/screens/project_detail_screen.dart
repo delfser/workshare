@@ -25,6 +25,7 @@ import '../utils/error_mapper.dart';
 import '../utils/role_utils.dart';
 import '../widgets/brand_logo.dart';
 import '../widgets/material_tile.dart';
+import 'activity_form_screen.dart';
 import 'camera_multi_capture_screen.dart';
 import 'invite_member_screen.dart';
 import 'material_form_screen.dart';
@@ -44,7 +45,7 @@ class ProjectDetailScreen extends StatefulWidget {
 }
 
 class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
-  int _sectionIndex = 2;
+  int _sectionIndex = 3;
   String? _runtimeProjectCode;
   String _materialSortMode = 'input';
   final _projectService = ProjectService();
@@ -57,6 +58,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   Stream<ProjectMember?>? _membershipStream;
   String? _membershipUid;
   late final Stream<List<ProjectPhoto>> _photosStream;
+  late final Stream<List<ProjectNote>> _activitiesStream;
   late final Stream<List<ProjectNote>> _notesStream;
   late final Stream<List<WorkLog>> _workLogsStream;
   late Stream<List<MaterialItem>> _materialsStream;
@@ -112,7 +114,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     _runtimeProjectCode = widget.project.projectCode;
     _materialSortMode = widget.project.materialSortMode;
     _photosStream = _photoService.streamPhotos(widget.project.id);
-    _notesStream = _noteService.streamNotes(widget.project.id);
+    _activitiesStream =
+        _noteService.streamNotes(widget.project.id, type: 'activity');
+    _notesStream = _noteService.streamNotes(widget.project.id, type: 'note');
     _workLogsStream = _workLogService.streamWorkLogs(widget.project.id);
     _materialsStream = _materialService.streamMaterials(
       widget.project.id,
@@ -208,6 +212,29 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     }
   }
 
+  Future<bool> _confirmDeleteMaterial() async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Material loeschen?'),
+            content: const Text(
+              'Bist du sicher, dass dieses Material geloescht werden soll?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Abbrechen'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Loeschen'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
@@ -265,8 +292,14 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     );
                     final workLogs =
                         await _workLogService.fetchWorkLogs(widget.project.id);
+                    final activities = await _noteService.fetchNotes(
+                      widget.project.id,
+                      type: 'activity',
+                    );
                     await _pdfService.shareMaterialPdf(
                       projectName: widget.project.name,
+                      activities:
+                          activities.map((activity) => activity.text).toList(),
                       materials: materials,
                       workLogs: workLogs,
                     );
@@ -295,16 +328,23 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
             ],
           ),
           floatingActionButton: canWrite &&
-                  (_sectionIndex == 2 ||
+                  (_sectionIndex == 3 ||
+                      _sectionIndex == 2 ||
                       _sectionIndex == 1 ||
-                      _sectionIndex == 3)
+                      _sectionIndex == 4)
               ? FloatingActionButton(
                   onPressed: () {
-                    if (_sectionIndex == 2) {
+                    if (_sectionIndex == 3) {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                             builder: (_) =>
                                 MaterialFormScreen(project: widget.project)),
+                      );
+                    } else if (_sectionIndex == 2) {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                ActivityFormScreen(project: widget.project)),
                       );
                     } else if (_sectionIndex == 1) {
                       Navigator.of(context).push(
@@ -312,7 +352,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                             builder: (_) =>
                                 WorkLogFormScreen(project: widget.project)),
                       );
-                    } else if (_sectionIndex == 3) {
+                    } else if (_sectionIndex == 4) {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                             builder: (_) =>
@@ -531,6 +571,14 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                       userId: user.uid,
                       canWrite: canWrite,
                     ),
+                    _buildSectionBody(
+                      index: 4,
+                      noteService: _noteService,
+                      workLogService: _workLogService,
+                      materialService: _materialService,
+                      userId: user.uid,
+                      canWrite: canWrite,
+                    ),
                   ],
                 ),
               ),
@@ -549,7 +597,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     required String userId,
     required bool canWrite,
   }) {
-    if (index == 3) {
+    if (index == 4) {
       return Padding(
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 80),
         child: StreamBuilder(
@@ -607,6 +655,101 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       );
     }
 
+    if (index == 2) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 80),
+        child: StreamBuilder(
+          stream: _activitiesStream,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return const Center(
+                  child: Text('Tätigkeiten konnten nicht geladen werden.'));
+            }
+            final activities = snapshot.data ?? const [];
+            if (activities.isEmpty) {
+              return const Center(child: Text('Keine Tätigkeiten vorhanden.'));
+            }
+            return ListView.builder(
+              itemCount: activities.length,
+              itemBuilder: (context, index) {
+                final activity = activities[index];
+                return Card(
+                  elevation: 0,
+                  child: ListTile(
+                    title: Text(activity.text),
+                    subtitle: Text(
+                      DateFormat('dd.MM.yyyy HH:mm').format(activity.updatedAt),
+                    ),
+                    onTap: canWrite
+                        ? () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => ActivityFormScreen(
+                                  project: widget.project,
+                                  activity: activity,
+                                ),
+                              ),
+                            );
+                          }
+                        : null,
+                    trailing: canWrite
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined),
+                                tooltip: 'Bearbeiten',
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => ActivityFormScreen(
+                                        project: widget.project,
+                                        activity: activity,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline),
+                                onPressed: () async {
+                                  try {
+                                    await noteService.deleteNote(activity.id);
+                                    if (!context.mounted) return;
+                                    showAppNotice(
+                                      context,
+                                      'Tätigkeit gelöscht.',
+                                      type: AppNoticeType.success,
+                                    );
+                                  } catch (e) {
+                                    if (!context.mounted) return;
+                                    showAppNotice(
+                                      context,
+                                      friendlyErrorMessage(
+                                        e,
+                                        fallback:
+                                            'Tätigkeit konnte nicht gelöscht werden.',
+                                      ),
+                                      type: AppNoticeType.error,
+                                    );
+                                  }
+                                },
+                              ),
+                            ],
+                          )
+                        : null,
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      );
+    }
+
     if (index == 1) {
       return Padding(
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 80),
@@ -636,26 +779,57 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     subtitle: Text(
                       '${DateFormat('dd.MM.yyyy HH:mm').format(log.updatedAt)} - ${log.worker}',
                     ),
+                    onTap: canWrite
+                        ? () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => WorkLogFormScreen(
+                                  project: widget.project,
+                                  workLog: log,
+                                ),
+                              ),
+                            );
+                          }
+                        : null,
                     trailing: canWrite
-                        ? IconButton(
-                            icon: const Icon(Icons.delete_outline),
-                            onPressed: () async {
-                              try {
-                                await workLogService.deleteWorkLog(log.id);
-                                if (!context.mounted) return;
-                                showAppNotice(context, 'Arbeitszeit gelöscht.',
-                                    type: AppNoticeType.success);
-                              } catch (e) {
-                                if (!context.mounted) return;
-                                showAppNotice(
-                                  context,
-                                  friendlyErrorMessage(e,
-                                      fallback:
-                                          'Arbeitszeit konnte nicht gelöscht werden.'),
-                                  type: AppNoticeType.error,
-                                );
-                              }
-                            },
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined),
+                                tooltip: 'Bearbeiten',
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => WorkLogFormScreen(
+                                        project: widget.project,
+                                        workLog: log,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline),
+                                onPressed: () async {
+                                  try {
+                                    await workLogService.deleteWorkLog(log.id);
+                                    if (!context.mounted) return;
+                                    showAppNotice(context, 'Arbeitszeit gelöscht.',
+                                        type: AppNoticeType.success);
+                                  } catch (e) {
+                                    if (!context.mounted) return;
+                                    showAppNotice(
+                                      context,
+                                      friendlyErrorMessage(e,
+                                          fallback:
+                                              'Arbeitszeit konnte nicht gelöscht werden.'),
+                                      type: AppNoticeType.error,
+                                    );
+                                  }
+                                },
+                              ),
+                            ],
                           )
                         : null,
                   ),
@@ -709,6 +883,14 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     return const Center(
                         child: Text('Noch keine Fotos hochgeladen.'));
                   }
+                  final viewerPhotos = photos
+                      .map(
+                        (p) => PhotoViewerImage(
+                          imageUrl: p.downloadUrl,
+                          localPath: p.localPath,
+                        ),
+                      )
+                      .toList(growable: false);
 
                   return GridView.builder(
                     itemCount: photos.length,
@@ -737,12 +919,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                                       Navigator.of(context).push(
                                         MaterialPageRoute(
                                           builder: (_) => PhotoViewerScreen(
-                                            imageUrl: hasRemote
-                                                ? photo.downloadUrl
-                                                : null,
-                                            localPath: hasLocal
-                                                ? photo.localPath
-                                                : null,
+                                            photos: viewerPhotos,
+                                            initialIndex: index,
                                           ),
                                         ),
                                       );
@@ -832,7 +1010,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       );
     }
 
-    return Column(
+    if (index == 3) {
+      return Column(
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
@@ -911,6 +1090,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                         : null,
                     onDelete: canWrite
                         ? () async {
+                            final confirmed = await _confirmDeleteMaterial();
+                            if (!confirmed) return;
                             try {
                               await materialService.deleteMaterial(item.id);
                               if (!context.mounted) return;
@@ -936,6 +1117,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         ),
       ],
     );
+    }
+
+    return const SizedBox.shrink();
   }
 }
 
@@ -948,7 +1132,13 @@ class _MiniSectionSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const items = ['Fotos', 'Arbeitszeit', 'Materialien', 'Notizen'];
+    const items = [
+      'Fotos',
+      'Arbeitszeit',
+      'Tätigkeiten',
+      'Materialien',
+      'Notizen'
+    ];
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final labelColor =
         isDark ? Theme.of(context).colorScheme.onSurface : Colors.black;

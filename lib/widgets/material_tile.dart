@@ -59,7 +59,7 @@ class MaterialTile extends StatelessWidget {
                       visualDensity: VisualDensity.compact,
                     ),
                   Text(
-                    'Geplant: ${_formatNumber(item.quantity)} ${item.unit}',
+                    'Verbraucht: ${_formatNumber(item.quantity)} ${item.unit}',
                     style: const TextStyle(
                         fontSize: 12, fontWeight: FontWeight.w500),
                   ),

@@ -63,6 +63,28 @@ service cloud.firestore {
     function workgroupMemberDoc(workgroupId, uid) {
       return get(/databases/$(database)/documents/workgroup_members/$(workgroupMemberId(workgroupId, uid)));
     }
+    function companyDoc(companyId) {
+      return get(/databases/$(database)/documents/companies/$(companyId));
+    }
+    function companyMemberId(companyId, uid) {
+      return companyId + '_' + uid;
+    }
+    function companyMemberDoc(companyId, uid) {
+      return get(/databases/$(database)/documents/company_members/$(companyMemberId(companyId, uid)));
+    }
+    function isCompanyMember(companyId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/company_members/$(companyMemberId(companyId, request.auth.uid)));
+    }
+    function hasCompanyRole(companyId, allowedRoles) {
+      return isCompanyMember(companyId) &&
+        companyMemberDoc(companyId, request.auth.uid).data.role in allowedRoles;
+    }
+    function isCompanyOwner(companyId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/companies/$(companyId)) &&
+        companyDoc(companyId).data.ownerId == request.auth.uid;
+    }
     function isWorkgroupMember(workgroupId) {
       return isSignedIn() &&
         exists(/databases/$(database)/documents/workgroup_members/$(workgroupMemberId(workgroupId, request.auth.uid)));
@@ -159,6 +181,62 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.auth.uid == uid;
       allow update: if isSignedIn() && request.auth.uid == uid;
       allow delete: if false;
+    }
+
+    match /companies/{companyId} {
+      allow read: if isCompanyMember(companyId);
+      allow create: if isSignedIn() &&
+        request.resource.data.ownerId == request.auth.uid;
+      allow update: if isCompanyOwner(companyId) ||
+        hasCompanyRole(companyId, ['company_owner', 'company_admin']);
+      allow delete: if isCompanyOwner(companyId);
+    }
+
+    match /company_members/{memberIdDoc} {
+      allow read: if isSignedIn() && (
+        memberIdDoc.matches('.*_' + request.auth.uid + '$') ||
+        resource.data.userId == request.auth.uid ||
+        (
+          resource.data.companyId is string &&
+          (
+            isCompanyOwner(resource.data.companyId) ||
+            hasCompanyRole(resource.data.companyId, ['company_owner', 'company_admin']) ||
+            isCompanyMember(resource.data.companyId)
+          )
+        )
+      );
+
+      allow create: if isSignedIn() && (
+        (
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.role == 'company_owner' &&
+          request.resource.data.companyId is string &&
+          companyDoc(request.resource.data.companyId).data.ownerId == request.auth.uid
+        ) ||
+        (
+          request.resource.data.companyId is string &&
+          (
+            isCompanyOwner(request.resource.data.companyId) ||
+            hasCompanyRole(request.resource.data.companyId, ['company_owner', 'company_admin'])
+          )
+        )
+      ) && request.resource.data.role in ['company_owner', 'company_admin', 'company_member'];
+
+      allow update: if isSignedIn() &&
+        resource.data.companyId is string &&
+        (
+          isCompanyOwner(resource.data.companyId) ||
+          hasCompanyRole(resource.data.companyId, ['company_owner', 'company_admin'])
+        ) &&
+        request.resource.data.role in ['company_owner', 'company_admin', 'company_member'];
+
+      allow delete: if isSignedIn() &&
+        resource.data.companyId is string &&
+        (
+          isCompanyOwner(resource.data.companyId) ||
+          hasCompanyRole(resource.data.companyId, ['company_owner', 'company_admin']) ||
+          resource.data.userId == request.auth.uid
+        );
     }
 
     match /projects/{projectId} {
@@ -361,7 +439,15 @@ service cloud.firestore {
         request.resource.data.text is string &&
         request.resource.data.text.size() > 0;
 
-      allow update: if false;
+      allow update: if isSignedIn() &&
+        (
+          hasRole(resource.data.projectId, ['owner', 'admin', 'worker']) ||
+          canManageProject(resource.data.projectId)
+        ) &&
+        request.resource.data.projectId == resource.data.projectId &&
+        request.resource.data.createdBy == resource.data.createdBy &&
+        request.resource.data.text is string &&
+        request.resource.data.text.size() > 0;
 
       allow delete: if isSignedIn() &&
         (
@@ -382,7 +468,17 @@ service cloud.firestore {
         request.resource.data.worker is string &&
         request.resource.data.worker.size() > 0;
 
-      allow update: if false;
+      allow update: if isSignedIn() &&
+        (
+          hasRole(resource.data.projectId, ['owner', 'admin', 'worker']) ||
+          canManageProject(resource.data.projectId)
+        ) &&
+        request.resource.data.projectId == resource.data.projectId &&
+        request.resource.data.createdBy == resource.data.createdBy &&
+        request.resource.data.hours is number &&
+        request.resource.data.hours > 0 &&
+        request.resource.data.worker is string &&
+        request.resource.data.worker.size() > 0;
 
       allow delete: if isSignedIn() &&
         (

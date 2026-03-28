@@ -1,12 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
-import '../core/app_config.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
-import '../services/app_update_service.dart';
 import '../services/catalog_service.dart';
 import '../services/firebase_service.dart';
 import '../utils/app_notice.dart';
@@ -23,9 +20,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late final Future<PackageInfo> _packageInfoFuture;
-  final _updateService = AppUpdateService();
   final _catalogService = CatalogService();
-  bool _checkingUpdate = false;
   bool _loadingSampleCatalog = false;
   bool _unloadingSampleCatalog = false;
 
@@ -34,70 +29,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _packageInfoFuture = PackageInfo.fromPlatform();
   }
-
-  Future<void> _checkForAppUpdate() async {
-    if (_checkingUpdate) return;
-    setState(() => _checkingUpdate = true);
-    try {
-      final update = await _updateService.checkForUpdate();
-      if (!mounted) return;
-      if (update == null) {
-        showAppNotice(context, 'Keine neue Version gefunden.',
-            type: AppNoticeType.info);
-        return;
-      }
-
-      await showDialog<void>(
-        context: context,
-        barrierDismissible: true,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Update verfügbar'),
-          content: Text(
-            update.notes.isEmpty
-                ? 'Version ${update.version} steht bereit. Jetzt installieren?'
-                : 'Version ${update.version} steht bereit.\n\n${update.notes}',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Später'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final ok = await launchUrl(
-                  Uri.parse(update.apkUrl),
-                  mode: LaunchMode.externalApplication,
-                );
-                if (dialogContext.mounted) {
-                  Navigator.of(dialogContext).pop();
-                }
-                if (!ok && mounted) {
-                  showAppNotice(
-                    context,
-                    'APK-Link konnte nicht geöffnet werden.',
-                    type: AppNoticeType.error,
-                  );
-                }
-              },
-              child: const Text('Installieren'),
-            ),
-          ],
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      showAppNotice(
-        context,
-        friendlyErrorMessage(e, fallback: 'Updateprüfung fehlgeschlagen.'),
-        type: AppNoticeType.error,
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _checkingUpdate = false);
-      }
-    }
-  }
-
   Future<void> _loadSampleCatalog() async {
     final user = context.read<AuthProvider>().user;
     if (user == null) {
@@ -111,8 +42,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           builder: (dialogContext) => AlertDialog(
             title: const Text('Beispielkatalog laden?'),
             content: const Text(
-              'Feste Vorlage wird in deinen persönlichen Katalog importiert. '
-              'Bestehende Einträge bleiben erhalten.',
+              'Feste Vorlage wird in deinen persÃ¶nlichen Katalog importiert. '
+              'Bestehende EintrÃ¤ge bleiben erhalten.',
             ),
             actions: [
               TextButton(
@@ -136,7 +67,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
       showAppNotice(
         context,
-        'Beispielkatalog geladen: ${result.inserted} hinzugefügt, ${result.skipped} übersprungen.',
+        'Beispielkatalog geladen: ${result.inserted} hinzugefÃ¼gt, ${result.skipped} Ã¼bersprungen.',
         type: AppNoticeType.success,
       );
     } catch (e) {
@@ -167,8 +98,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           builder: (dialogContext) => AlertDialog(
             title: const Text('Beispielkatalog entladen?'),
             content: const Text(
-              'Es werden nur importierte Beispiel-Einträge entfernt. '
-              'Deine eigenen Katalogeinträge bleiben erhalten.',
+              'Es werden nur importierte Beispiel-EintrÃ¤ge entfernt. '
+              'Deine eigenen KatalogeintrÃ¤ge bleiben erhalten.',
             ),
             actions: [
               TextButton(
@@ -311,7 +242,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   future: _packageInfoFuture,
                   builder: (context, snapshot) {
                     final versionText =
-                        snapshot.hasData ? snapshot.data!.version : 'Lädt...';
+                        snapshot.hasData ? snapshot.data!.version : 'LÃ¤dt...';
                     return ListTile(
                       leading: const Icon(Icons.info_outline),
                       title: const Text('App-Version'),
@@ -320,22 +251,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                 ),
                 const Divider(height: 1),
-                if (AppConfig.otaEnabled) ...[
-                  ListTile(
-                    leading: _checkingUpdate
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.system_update_alt_outlined),
-                    title: const Text('Auf Update prüfen'),
-                    subtitle:
-                        const Text('Manuell prüfen und optional installieren'),
-                    onTap: _checkingUpdate ? null : _checkForAppUpdate,
-                  ),
-                  const Divider(height: 1),
-                ],
                 ListTile(
                   leading: _loadingSampleCatalog
                       ? const SizedBox(
@@ -359,7 +274,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       : const Icon(Icons.playlist_remove_outlined),
                   title: const Text('Beispielkatalog entladen'),
                   subtitle:
-                      const Text('Nur importierte Beispiel-Einträge entfernen'),
+                      const Text('Nur importierte Beispiel-EintrÃ¤ge entfernen'),
                   onTap: _unloadingSampleCatalog ? null : _unloadSampleCatalog,
                 ),
                 const Divider(height: 1),
@@ -375,7 +290,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         .doc(uid)
                         .snapshots(includeMetadataChanges: true),
                     builder: (context, snapshot) {
-                      String statusText = 'Prüfe Verbindung...';
+                      String statusText = 'PrÃ¼fe Verbindung...';
                       IconData statusIcon = Icons.cloud_queue_outlined;
                       Color? statusColor;
 
@@ -435,3 +350,4 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 }
+

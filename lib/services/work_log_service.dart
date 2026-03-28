@@ -50,4 +50,16 @@ class WorkLogService {
   Future<void> deleteWorkLog(String id) {
     return FirebaseService.workLogs.doc(id).delete();
   }
+
+  Future<void> updateWorkLog({
+    required String id,
+    required double hours,
+    required String worker,
+  }) {
+    return FirebaseService.workLogs.doc(id).update({
+      'hours': hours,
+      'worker': worker.trim(),
+      'updatedAt': FirebaseService.now(),
+    });
+  }
 }

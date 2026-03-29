@@ -27,6 +27,7 @@ class AuthProvider extends ChangeNotifier {
   StreamSubscription<User?>? _sub;
   StreamSubscription<int>? _pendingInvitationsSub;
   bool _sessionValidationRunning = false;
+  int _invalidSessionChecks = 0;
   User? _user;
   bool _loading = false;
   String? _error;
@@ -40,6 +41,7 @@ class AuthProvider extends ChangeNotifier {
     await _pendingInvitationsSub?.cancel();
     _pendingInvitationsSub = null;
     _user = user;
+    _invalidSessionChecks = 0;
     notifyListeners();
 
     final userEmail = user?.email ?? '';
@@ -63,9 +65,33 @@ class AuthProvider extends ChangeNotifier {
     if (_sessionValidationRunning) return;
     if (_user == null) return;
     _sessionValidationRunning = true;
+    final startedForUid = _user!.uid;
+
     try {
-      final valid = await _authService.verifyCurrentUserStillValid();
-      if (!valid) {
+      final firstValid = await _authService.verifyCurrentUserStillValid();
+      if (firstValid) {
+        _invalidSessionChecks = 0;
+        return;
+      }
+
+      // Schutz gegen sporadische Provider-Glitches:
+      // erst nach einem zweiten negativen Check wird ausgeloggt.
+      _invalidSessionChecks += 1;
+      await Future<void>.delayed(const Duration(seconds: 2));
+
+      if (_user == null || _user!.uid != startedForUid) {
+        _invalidSessionChecks = 0;
+        return;
+      }
+
+      final secondValid = await _authService.verifyCurrentUserStillValid();
+      if (secondValid) {
+        _invalidSessionChecks = 0;
+        return;
+      }
+
+      if (_invalidSessionChecks >= 1) {
+        _invalidSessionChecks = 0;
         _error = 'Konto deaktiviert oder gelöscht. Du wurdest abgemeldet.';
         notifyListeners();
         await _authService.logout();

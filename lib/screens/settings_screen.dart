@@ -42,8 +42,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           builder: (dialogContext) => AlertDialog(
             title: const Text('Beispielkatalog laden?'),
             content: const Text(
-              'Feste Vorlage wird in deinen persÃ¶nlichen Katalog importiert. '
-              'Bestehende EintrÃ¤ge bleiben erhalten.',
+              'Feste Vorlage wird in deinen persönlichen Katalog importiert. '
+              'Bestehende Einträge bleiben erhalten.',
             ),
             actions: [
               TextButton(
@@ -67,7 +67,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
       showAppNotice(
         context,
-        'Beispielkatalog geladen: ${result.inserted} hinzugefÃ¼gt, ${result.skipped} Ã¼bersprungen.',
+        'Beispielkatalog geladen: ${result.inserted} hinzugefügt, ${result.skipped} übersprungen.',
         type: AppNoticeType.success,
       );
     } catch (e) {
@@ -98,8 +98,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           builder: (dialogContext) => AlertDialog(
             title: const Text('Beispielkatalog entladen?'),
             content: const Text(
-              'Es werden nur importierte Beispiel-EintrÃ¤ge entfernt. '
-              'Deine eigenen KatalogeintrÃ¤ge bleiben erhalten.',
+              'Es werden nur importierte Beispiel-Einträge entfernt. '
+              'Deine eigenen Katalogeinträge bleiben erhalten.',
             ),
             actions: [
               TextButton(
@@ -243,7 +243,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   builder: (context, snapshot) {
                     final versionText = snapshot.hasData
                         ? '${snapshot.data!.version} (${snapshot.data!.buildNumber})'
-                        : 'LÃ¤dt...';
+                        : 'Lädt...';
                     return ListTile(
                       leading: const Icon(Icons.info_outline),
                       title: const Text('App-Version'),
@@ -275,7 +275,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       : const Icon(Icons.playlist_remove_outlined),
                   title: const Text('Beispielkatalog entladen'),
                   subtitle:
-                      const Text('Nur importierte Beispiel-EintrÃ¤ge entfernen'),
+                      const Text('Nur importierte Beispiel-Einträge entfernen'),
                   onTap: _unloadingSampleCatalog ? null : _unloadSampleCatalog,
                 ),
                 const Divider(height: 1),
@@ -291,7 +291,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         .doc(uid)
                         .snapshots(includeMetadataChanges: true),
                     builder: (context, snapshot) {
-                      String statusText = 'PrÃ¼fe Verbindung...';
+                      String statusText = 'Prüfe Verbindung...';
                       IconData statusIcon = Icons.cloud_queue_outlined;
                       Color? statusColor;
 
@@ -351,4 +351,5 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 }
+
 

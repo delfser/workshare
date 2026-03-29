@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -114,9 +114,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     _runtimeProjectCode = widget.project.projectCode;
     _materialSortMode = widget.project.materialSortMode;
     _photosStream = _photoService.streamPhotos(widget.project.id);
-    _activitiesStream =
-        _noteService.streamNotes(widget.project.id, type: 'activity');
-    _notesStream = _noteService.streamNotes(widget.project.id, type: 'note');
+    _activitiesStream = _noteService.streamActivities(widget.project.id);
+    _notesStream = _noteService.streamRegularNotes(widget.project.id);
     _workLogsStream = _workLogService.streamWorkLogs(widget.project.id);
     _materialsStream = _materialService.streamMaterials(
       widget.project.id,
@@ -292,10 +291,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     );
                     final workLogs =
                         await _workLogService.fetchWorkLogs(widget.project.id);
-                    final activities = await _noteService.fetchNotes(
-                      widget.project.id,
-                      type: 'activity',
-                    );
+                    final activities =
+                        await _noteService.fetchActivities(widget.project.id);
                     await _pdfService.shareMaterialPdf(
                       projectName: widget.project.name,
                       activities:
@@ -624,26 +621,57 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     title: Text(note.text),
                     subtitle: Text(
                         DateFormat('dd.MM.yyyy HH:mm').format(note.updatedAt)),
+                    onTap: canWrite
+                        ? () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => NoteFormScreen(
+                                  project: widget.project,
+                                  note: note,
+                                ),
+                              ),
+                            );
+                          }
+                        : null,
                     trailing: canWrite
-                        ? IconButton(
-                            icon: const Icon(Icons.delete_outline),
-                            onPressed: () async {
-                              try {
-                                await noteService.deleteNote(note.id);
-                                if (!context.mounted) return;
-                                showAppNotice(context, 'Notiz gelöscht.',
-                                    type: AppNoticeType.success);
-                              } catch (e) {
-                                if (!context.mounted) return;
-                                showAppNotice(
-                                  context,
-                                  friendlyErrorMessage(e,
-                                      fallback:
-                                          'Notiz konnte nicht gelöscht werden.'),
-                                  type: AppNoticeType.error,
-                                );
-                              }
-                            },
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined),
+                                tooltip: 'Bearbeiten',
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => NoteFormScreen(
+                                        project: widget.project,
+                                        note: note,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline),
+                                onPressed: () async {
+                                  try {
+                                    await noteService.deleteNote(note.id);
+                                    if (!context.mounted) return;
+                                    showAppNotice(context, 'Notiz geloescht.',
+                                        type: AppNoticeType.success);
+                                  } catch (e) {
+                                    if (!context.mounted) return;
+                                    showAppNotice(
+                                      context,
+                                      friendlyErrorMessage(e,
+                                          fallback:
+                                              'Notiz konnte nicht geloescht werden.'),
+                                      type: AppNoticeType.error,
+                                    );
+                                  }
+                                },
+                              ),
+                            ],
                           )
                         : null,
                   ),
@@ -815,7 +843,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                                   try {
                                     await workLogService.deleteWorkLog(log.id);
                                     if (!context.mounted) return;
-                                    showAppNotice(context, 'Arbeitszeit gelöscht.',
+                                    showAppNotice(
+                                        context, 'Arbeitszeit gelöscht.',
                                         type: AppNoticeType.success);
                                   } catch (e) {
                                     if (!context.mounted) return;
@@ -1012,111 +1041,111 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
 
     if (index == 3) {
       return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-          child: Row(
-            children: [
-              Text(
-                'Sortierung:',
-                style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: SegmentedButton<String>(
-                  showSelectedIcon: false,
-                  segments: const [
-                    ButtonSegment<String>(
-                      value: 'input',
-                      icon: Icon(Icons.schedule_outlined, size: 16),
-                      label: Text('Eingabe'),
-                    ),
-                    ButtonSegment<String>(
-                      value: 'alpha',
-                      icon: Icon(Icons.sort_by_alpha_outlined, size: 16),
-                      label: Text('A-Z'),
-                    ),
-                  ],
-                  selected: {_materialSortMode},
-                  onSelectionChanged: (selection) {
-                    final mode = selection.first;
-                    _setMaterialSortMode(mode);
-                  },
-                  style: const ButtonStyle(
-                    visualDensity: VisualDensity.compact,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    padding: WidgetStatePropertyAll(
-                      EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            child: Row(
+              children: [
+                Text(
+                  'Sortierung:',
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SegmentedButton<String>(
+                    showSelectedIcon: false,
+                    segments: const [
+                      ButtonSegment<String>(
+                        value: 'input',
+                        icon: Icon(Icons.schedule_outlined, size: 16),
+                        label: Text('Eingabe'),
+                      ),
+                      ButtonSegment<String>(
+                        value: 'alpha',
+                        icon: Icon(Icons.sort_by_alpha_outlined, size: 16),
+                        label: Text('A-Z'),
+                      ),
+                    ],
+                    selected: {_materialSortMode},
+                    onSelectionChanged: (selection) {
+                      final mode = selection.first;
+                      _setMaterialSortMode(mode);
+                    },
+                    style: const ButtonStyle(
+                      visualDensity: VisualDensity.compact,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      padding: WidgetStatePropertyAll(
+                        EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        Expanded(
-          child: StreamBuilder(
-            stream: _materialsStream,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError) {
-                return const Center(
-                    child: Text('Materialien konnten nicht geladen werden.'));
-              }
+          Expanded(
+            child: StreamBuilder(
+              stream: _materialsStream,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return const Center(
+                      child: Text('Materialien konnten nicht geladen werden.'));
+                }
 
-              final materials = snapshot.data ?? const [];
-              if (materials.isEmpty) {
-                return const Center(
-                    child: Text('Noch keine Materialien erfasst.'));
-              }
+                final materials = snapshot.data ?? const [];
+                if (materials.isEmpty) {
+                  return const Center(
+                      child: Text('Noch keine Materialien erfasst.'));
+                }
 
-              return ListView.builder(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 80),
-                itemCount: materials.length,
-                itemBuilder: (context, index) {
-                  final item = materials[index];
-                  return MaterialTile(
-                    item: item,
-                    onEdit: canWrite
-                        ? () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => MaterialFormScreen(
-                                    project: widget.project, material: item),
-                              ),
-                            )
-                        : null,
-                    onDelete: canWrite
-                        ? () async {
-                            final confirmed = await _confirmDeleteMaterial();
-                            if (!confirmed) return;
-                            try {
-                              await materialService.deleteMaterial(item.id);
-                              if (!context.mounted) return;
-                              showAppNotice(context, 'Material gelöscht.',
-                                  type: AppNoticeType.success);
-                            } catch (e) {
-                              if (!context.mounted) return;
-                              showAppNotice(
-                                context,
-                                friendlyErrorMessage(e,
-                                    fallback:
-                                        'Material konnte nicht gelöscht werden.'),
-                                type: AppNoticeType.error,
-                              );
+                return ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 80),
+                  itemCount: materials.length,
+                  itemBuilder: (context, index) {
+                    final item = materials[index];
+                    return MaterialTile(
+                      item: item,
+                      onEdit: canWrite
+                          ? () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => MaterialFormScreen(
+                                      project: widget.project, material: item),
+                                ),
+                              )
+                          : null,
+                      onDelete: canWrite
+                          ? () async {
+                              final confirmed = await _confirmDeleteMaterial();
+                              if (!confirmed) return;
+                              try {
+                                await materialService.deleteMaterial(item.id);
+                                if (!context.mounted) return;
+                                showAppNotice(context, 'Material gelöscht.',
+                                    type: AppNoticeType.success);
+                              } catch (e) {
+                                if (!context.mounted) return;
+                                showAppNotice(
+                                  context,
+                                  friendlyErrorMessage(e,
+                                      fallback:
+                                          'Material konnte nicht gelöscht werden.'),
+                                  type: AppNoticeType.error,
+                                );
+                              }
                             }
-                          }
-                        : null,
-                  );
-                },
-              );
-            },
+                          : null,
+                    );
+                  },
+                );
+              },
+            ),
           ),
-        ),
-      ],
-    );
+        ],
+      );
     }
 
     return const SizedBox.shrink();
@@ -1165,3 +1194,4 @@ class _MiniSectionSelector extends StatelessWidget {
     );
   }
 }
+

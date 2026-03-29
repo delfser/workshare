@@ -26,6 +26,10 @@ class PdfExportService {
   }) async {
     final doc = pw.Document();
     final date = DateFormat('dd.MM.yyyy').format(DateTime.now());
+    final visibleActivities = activities
+        .map((activity) => activity.trim())
+        .where((activity) => activity.isNotEmpty)
+        .toList(growable: false);
     pw.MemoryImage? logoImage;
     try {
       final logoBytes = await rootBundle.load('assets/branding/icon.png');
@@ -73,21 +77,18 @@ class PdfExportService {
             pw.Text('Projekt: $projectName'),
             pw.Text('Erstellt am: $date'),
             pw.SizedBox(height: 16),
-            if (activities.isNotEmpty) ...[
+            if (visibleActivities.isNotEmpty) ...[
               pw.Text(
                 'Tätigkeiten',
                 style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
               ),
               pw.SizedBox(height: 8),
-              ...activities
-                  .map((activity) => activity.trim())
-                  .where((activity) => activity.isNotEmpty)
-                  .map(
-                    (activity) => pw.Padding(
-                      padding: const pw.EdgeInsets.only(bottom: 4),
-                      child: pw.Text('- $activity'),
-                    ),
-                  ),
+              ...visibleActivities.map(
+                (activity) => pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 4),
+                  child: pw.Text('- $activity'),
+                ),
+              ),
               pw.SizedBox(height: 14),
             ],
             pw.Text('Materialien',

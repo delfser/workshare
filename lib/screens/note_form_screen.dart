@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/project.dart';
+import '../models/project_note.dart';
 import '../providers/auth_provider.dart';
 import '../services/project_note_service.dart';
 import '../utils/app_notice.dart';
@@ -11,9 +12,14 @@ import '../utils/error_mapper.dart';
 import '../utils/validators.dart';
 
 class NoteFormScreen extends StatefulWidget {
-  const NoteFormScreen({super.key, required this.project});
+  const NoteFormScreen({
+    super.key,
+    required this.project,
+    this.note,
+  });
 
   final Project project;
+  final ProjectNote? note;
 
   @override
   State<NoteFormScreen> createState() => _NoteFormScreenState();
@@ -24,6 +30,14 @@ class _NoteFormScreenState extends State<NoteFormScreen> {
   final _textCtrl = TextEditingController();
   final _service = ProjectNoteService();
   bool _busy = false;
+
+  bool get _isEdit => widget.note != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _textCtrl.text = widget.note?.text ?? '';
+  }
 
   @override
   void dispose() {
@@ -39,13 +53,18 @@ class _NoteFormScreenState extends State<NoteFormScreen> {
     setState(() => _busy = true);
     try {
       var queuedOffline = false;
-      await _service
-          .addNote(
-        projectId: widget.project.id,
-        text: _textCtrl.text.trim(),
-        createdBy: user.uid,
-      )
-          .timeout(
+      final future = _isEdit
+          ? _service.updateNote(
+              noteId: widget.note!.id,
+              text: _textCtrl.text.trim(),
+            )
+          : _service.addNote(
+              projectId: widget.project.id,
+              text: _textCtrl.text.trim(),
+              createdBy: user.uid,
+              type: 'note',
+            );
+      await future.timeout(
         const Duration(milliseconds: 1200),
         onTimeout: () {
           queuedOffline = true;
@@ -57,7 +76,7 @@ class _NoteFormScreenState extends State<NoteFormScreen> {
         context,
         queuedOffline
             ? 'Offline gespeichert. Sync folgt automatisch.'
-            : 'Notiz gespeichert.',
+            : (_isEdit ? 'Notiz aktualisiert.' : 'Notiz gespeichert.'),
         type: AppNoticeType.success,
       );
     } catch (e) {
@@ -65,7 +84,9 @@ class _NoteFormScreenState extends State<NoteFormScreen> {
       showAppNotice(
         context,
         friendlyErrorMessage(e,
-            fallback: 'Notiz konnte nicht gespeichert werden.'),
+            fallback: _isEdit
+                ? 'Notiz konnte nicht aktualisiert werden.'
+                : 'Notiz konnte nicht gespeichert werden.'),
         type: AppNoticeType.error,
       );
     } finally {
@@ -76,7 +97,9 @@ class _NoteFormScreenState extends State<NoteFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Notiz hinzufuegen')),
+      appBar: AppBar(
+        title: Text(_isEdit ? 'Notiz bearbeiten' : 'Notiz hinzufuegen'),
+      ),
       body: IgnorePointer(
         ignoring: _busy,
         child: ListView(

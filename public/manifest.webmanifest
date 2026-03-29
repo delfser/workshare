@@ -1,0 +1,32 @@
+{
+  "id": "/",
+  "name": "WorkShare",
+  "short_name": "WorkShare",
+  "description": "WorkShare Weboberfläche für Projekte, Materialkatalog und Teamarbeit.",
+  "lang": "de-AT",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#dce3ef",
+  "theme_color": "#5a78a8",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/workshare-logo.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    },
+    {
+      "src": "/workshare-logo.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    },
+    {
+      "src": "/workshare-logo.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

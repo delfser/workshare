@@ -1,0 +1,576 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userEmail() {
+      return !isSignedIn()
+        ? null
+        : (
+            exists(/databases/$(database)/documents/users/$(request.auth.uid))
+              ? userDoc().data.email
+              : (
+                  request.auth.token.email is string
+                    ? request.auth.token.email.lower()
+                    : null
+                )
+          );
+    }
+
+    function projectDoc(projectId) {
+      return get(/databases/$(database)/documents/projects/$(projectId));
+    }
+    function projectDocAfter(projectId) {
+      return getAfter(/databases/$(database)/documents/projects/$(projectId));
+    }
+
+    function memberId(projectId, uid) {
+      return projectId + '_' + uid;
+    }
+
+    function memberDoc(projectId, uid) {
+      return get(/databases/$(database)/documents/project_members/$(memberId(projectId, uid)));
+    }
+    function joinCodeDoc(code) {
+      return get(/databases/$(database)/documents/project_join_codes/$(code));
+    }
+    function joinCodeIsValid(code, projectId) {
+      return exists(/databases/$(database)/documents/project_join_codes/$(code)) &&
+        joinCodeDoc(code).data.projectId == projectId &&
+        (
+          !('isActive' in joinCodeDoc(code).data) ||
+          joinCodeDoc(code).data.isActive == true
+        );
+    }
+    function invitationDoc(invitationId) {
+      return get(/databases/$(database)/documents/invitations/$(invitationId));
+    }
+    function workgroupDoc(workgroupId) {
+      return get(/databases/$(database)/documents/workgroups/$(workgroupId));
+    }
+    function workgroupDocAfter(workgroupId) {
+      return getAfter(/databases/$(database)/documents/workgroups/$(workgroupId));
+    }
+    function workgroupMemberId(workgroupId, uid) {
+      return workgroupId + '_' + uid;
+    }
+    function workgroupMemberDoc(workgroupId, uid) {
+      return get(/databases/$(database)/documents/workgroup_members/$(workgroupMemberId(workgroupId, uid)));
+    }
+    function companyDoc(companyId) {
+      return get(/databases/$(database)/documents/companies/$(companyId));
+    }
+    function companyMemberId(companyId, uid) {
+      return companyId + '_' + uid;
+    }
+    function companyMemberDoc(companyId, uid) {
+      return get(/databases/$(database)/documents/company_members/$(companyMemberId(companyId, uid)));
+    }
+    function isCompanyMember(companyId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/company_members/$(companyMemberId(companyId, request.auth.uid)));
+    }
+    function hasCompanyRole(companyId, allowedRoles) {
+      return isCompanyMember(companyId) &&
+        companyMemberDoc(companyId, request.auth.uid).data.role in allowedRoles;
+    }
+    function isCompanyOwner(companyId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/companies/$(companyId)) &&
+        companyDoc(companyId).data.ownerId == request.auth.uid;
+    }
+    function isWorkgroupMember(workgroupId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/workgroup_members/$(workgroupMemberId(workgroupId, request.auth.uid)));
+    }
+    function hasWorkgroupRole(workgroupId, allowedRoles) {
+      return isWorkgroupMember(workgroupId) &&
+        workgroupMemberDoc(workgroupId, request.auth.uid).data.role.lower() in allowedRoles;
+    }
+    function isWorkgroupOwner(workgroupId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/workgroups/$(workgroupId)) &&
+        workgroupDoc(workgroupId).data.ownerId == request.auth.uid;
+    }
+    function canManageWorkgroup(workgroupId) {
+      return isWorkgroupOwner(workgroupId) || hasWorkgroupRole(workgroupId, ['owner', 'admin']);
+    }
+    function catalogWorkgroupId(data) {
+      return data.workgroupId is string && data.workgroupId.size() > 0
+        ? data.workgroupId
+        : null;
+    }
+    function canReadCatalog(data) {
+      return isSignedIn() && (
+        data.createdBy == request.auth.uid ||
+        (
+          catalogWorkgroupId(data) != null &&
+          isWorkgroupMember(catalogWorkgroupId(data))
+        )
+      );
+    }
+    function canWriteCatalogCreate(data) {
+      return isSignedIn() &&
+        data.createdBy == request.auth.uid &&
+        (
+          (
+            catalogWorkgroupId(data) == null
+          ) ||
+          (
+            catalogWorkgroupId(data) != null &&
+            isWorkgroupMember(catalogWorkgroupId(data))
+          )
+        );
+    }
+    function canWriteCatalogExisting(data) {
+      return isSignedIn() && (
+        data.createdBy == request.auth.uid ||
+        (
+          catalogWorkgroupId(data) != null &&
+          isWorkgroupMember(catalogWorkgroupId(data))
+        )
+      );
+    }
+
+    function isProjectMember(projectId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/project_members/$(memberId(projectId, request.auth.uid)));
+    }
+    function canReadProject(projectId) {
+      return isProjectMember(projectId) ||
+        (
+          exists(/databases/$(database)/documents/projects/$(projectId)) &&
+          projectDoc(projectId).data.workgroupId is string &&
+          isWorkgroupMember(projectDoc(projectId).data.workgroupId)
+        );
+    }
+
+    function hasRole(projectId, allowedRoles) {
+      return isProjectMember(projectId) &&
+        memberDoc(projectId, request.auth.uid).data.role.lower() in allowedRoles;
+    }
+    function isProjectOwner(projectId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/projects/$(projectId)) &&
+        projectDoc(projectId).data.ownerId == request.auth.uid;
+    }
+    function canManageProject(projectId) {
+      return isProjectOwner(projectId) ||
+        hasRole(projectId, ['owner', 'admin']) ||
+        (
+          exists(/databases/$(database)/documents/projects/$(projectId)) &&
+          projectDoc(projectId).data.workgroupId is string &&
+          isWorkgroupMember(projectDoc(projectId).data.workgroupId)
+        );
+    }
+    function canSelfPromoteToOwner(projectId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/projects/$(projectId)) &&
+        projectDoc(projectId).data.workgroupId is string &&
+        isWorkgroupMember(projectDoc(projectId).data.workgroupId);
+    }
+
+    match /users/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow create: if isSignedIn() && request.auth.uid == uid;
+      allow update: if isSignedIn() && request.auth.uid == uid;
+      allow delete: if false;
+    }
+
+    match /companies/{companyId} {
+      allow read: if isCompanyMember(companyId);
+      allow create: if isSignedIn() &&
+        request.resource.data.ownerId == request.auth.uid;
+      allow update: if isCompanyOwner(companyId) ||
+        hasCompanyRole(companyId, ['company_owner', 'company_admin']);
+      allow delete: if isCompanyOwner(companyId);
+    }
+
+    match /company_members/{memberIdDoc} {
+      allow read: if isSignedIn() && (
+        memberIdDoc.matches('.*_' + request.auth.uid + '$') ||
+        resource.data.userId == request.auth.uid ||
+        (
+          resource.data.companyId is string &&
+          (
+            isCompanyOwner(resource.data.companyId) ||
+            hasCompanyRole(resource.data.companyId, ['company_owner', 'company_admin']) ||
+            isCompanyMember(resource.data.companyId)
+          )
+        )
+      );
+
+      allow create: if isSignedIn() && (
+        (
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.role == 'company_owner' &&
+          request.resource.data.companyId is string &&
+          companyDoc(request.resource.data.companyId).data.ownerId == request.auth.uid
+        ) ||
+        (
+          request.resource.data.companyId is string &&
+          (
+            isCompanyOwner(request.resource.data.companyId) ||
+            hasCompanyRole(request.resource.data.companyId, ['company_owner', 'company_admin'])
+          )
+        )
+      ) && request.resource.data.role in ['company_owner', 'company_admin', 'company_member'];
+
+      allow update: if isSignedIn() &&
+        resource.data.companyId is string &&
+        (
+          isCompanyOwner(resource.data.companyId) ||
+          hasCompanyRole(resource.data.companyId, ['company_owner', 'company_admin'])
+        ) &&
+        request.resource.data.role in ['company_owner', 'company_admin', 'company_member'];
+
+      allow delete: if isSignedIn() &&
+        resource.data.companyId is string &&
+        (
+          isCompanyOwner(resource.data.companyId) ||
+          hasCompanyRole(resource.data.companyId, ['company_owner', 'company_admin']) ||
+          resource.data.userId == request.auth.uid
+        );
+    }
+
+    match /projects/{projectId} {
+      allow read: if isProjectMember(projectId) ||
+        (
+          resource.data.workgroupId is string &&
+          isWorkgroupMember(resource.data.workgroupId)
+        );
+      allow create: if isSignedIn() && (
+        request.resource.data.ownerId == request.auth.uid ||
+        (
+          request.resource.data.workgroupId is string &&
+          canManageWorkgroup(request.resource.data.workgroupId)
+        )
+      );
+      allow update: if canManageProject(projectId);
+      allow delete: if canManageProject(projectId);
+    }
+
+    match /project_members/{memberIdDoc} {
+      allow read: if isSignedIn() && (
+        memberIdDoc.matches('.*_' + request.auth.uid + '$') ||
+        resource.data.userId == request.auth.uid ||
+        canManageProject(resource.data.projectId) ||
+        canReadProject(resource.data.projectId)
+      );
+
+      allow create: if isSignedIn() && (
+        canManageProject(request.resource.data.projectId) ||
+        (
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.role == 'owner' &&
+          projectDocAfter(request.resource.data.projectId).data.ownerId == request.auth.uid
+        ) ||
+        (
+          projectDocAfter(request.resource.data.projectId).data.ownerId == request.auth.uid &&
+          request.resource.data.invitedBy == request.auth.uid
+        ) ||
+        (
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.role == 'worker' &&
+          request.resource.data.joinCode is string &&
+          joinCodeIsValid(request.resource.data.joinCode, request.resource.data.projectId)
+        ) ||
+        (
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.invitationId is string &&
+          exists(/databases/$(database)/documents/invitations/$(request.resource.data.invitationId)) &&
+          invitationDoc(request.resource.data.invitationId).data.status == 'pending' &&
+          invitationDoc(request.resource.data.invitationId).data.projectId == request.resource.data.projectId &&
+          invitationDoc(request.resource.data.invitationId).data.role == request.resource.data.role &&
+          invitationDoc(request.resource.data.invitationId).data.email == userEmail()
+        )
+      ) && request.resource.data.role in ['owner', 'admin', 'worker', 'viewer'];
+
+      allow update: if isSignedIn() &&
+        (
+          (
+            canManageProject(resource.data.projectId) &&
+            request.resource.data.role in ['owner', 'admin', 'worker', 'viewer']
+          ) ||
+          (
+            request.resource.data.userId == request.auth.uid &&
+            request.resource.data.projectId == resource.data.projectId &&
+            request.resource.data.role == 'owner' &&
+            request.resource.data.email == resource.data.email &&
+            request.resource.data.joinedAt == resource.data.joinedAt &&
+            canSelfPromoteToOwner(resource.data.projectId)
+          )
+        );
+
+      allow delete: if isSignedIn() && (
+        canManageProject(resource.data.projectId) ||
+        (resource.data.userId == request.auth.uid && !isProjectOwner(resource.data.projectId))
+      );
+    }
+    match /project_join_codes/{code} {
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn() && (
+        (
+          request.resource.data.ownerId == request.auth.uid &&
+          projectDocAfter(request.resource.data.projectId).data.ownerId == request.auth.uid
+        ) ||
+        canManageProject(request.resource.data.projectId)
+      );
+
+      allow update: if isSignedIn() && canManageProject(resource.data.projectId);
+      allow delete: if isSignedIn() && canManageProject(resource.data.projectId);
+    }
+    match /workgroups/{workgroupId} {
+      allow read: if isWorkgroupMember(workgroupId);
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if canManageWorkgroup(workgroupId);
+      allow delete: if isWorkgroupOwner(workgroupId);
+    }
+    match /workgroup_members/{memberIdDoc} {
+      allow read: if isSignedIn() && (
+        memberIdDoc.matches('.*_' + request.auth.uid + '$') ||
+        resource.data.userId == request.auth.uid ||
+        canManageWorkgroup(resource.data.workgroupId) ||
+        isWorkgroupMember(resource.data.workgroupId)
+      );
+
+      allow create: if isSignedIn() && (
+        canManageWorkgroup(request.resource.data.workgroupId) ||
+        (
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.role == 'owner' &&
+          workgroupDocAfter(request.resource.data.workgroupId).data.ownerId == request.auth.uid
+        ) ||
+        (
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.role == 'member' &&
+          request.resource.data.joinCode is string &&
+          exists(/databases/$(database)/documents/workgroup_join_codes/$(request.resource.data.joinCode)) &&
+          get(/databases/$(database)/documents/workgroup_join_codes/$(request.resource.data.joinCode)).data.workgroupId ==
+            request.resource.data.workgroupId &&
+          (
+            !('isActive' in get(/databases/$(database)/documents/workgroup_join_codes/$(request.resource.data.joinCode)).data) ||
+            get(/databases/$(database)/documents/workgroup_join_codes/$(request.resource.data.joinCode)).data.isActive == true
+          )
+        ) ||
+        (
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.invitationId is string &&
+          exists(/databases/$(database)/documents/invitations/$(request.resource.data.invitationId)) &&
+          invitationDoc(request.resource.data.invitationId).data.status == 'pending' &&
+          invitationDoc(request.resource.data.invitationId).data.workgroupId == request.resource.data.workgroupId &&
+          invitationDoc(request.resource.data.invitationId).data.role == request.resource.data.role &&
+          invitationDoc(request.resource.data.invitationId).data.email == userEmail()
+        )
+      ) && request.resource.data.role in ['owner', 'admin', 'member'];
+
+      allow update: if isSignedIn() &&
+        canManageWorkgroup(resource.data.workgroupId) &&
+        request.resource.data.role in ['owner', 'admin', 'member'];
+
+      allow delete: if isSignedIn() && (
+        canManageWorkgroup(resource.data.workgroupId) ||
+        (resource.data.userId == request.auth.uid && !isWorkgroupOwner(resource.data.workgroupId))
+      );
+    }
+    match /workgroup_join_codes/{code} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (
+        (
+          request.resource.data.ownerId == request.auth.uid &&
+          workgroupDocAfter(request.resource.data.workgroupId).data.ownerId == request.auth.uid
+        ) ||
+        canManageWorkgroup(request.resource.data.workgroupId)
+      );
+      allow update: if isSignedIn() && canManageWorkgroup(resource.data.workgroupId);
+      allow delete: if isSignedIn() && isWorkgroupOwner(resource.data.workgroupId);
+    }
+
+    match /materials/{materialId} {
+      allow read: if canReadProject(resource.data.projectId);
+
+      allow create: if isSignedIn() &&
+        (
+          hasRole(request.resource.data.projectId, ['owner', 'admin', 'worker']) ||
+          canManageProject(request.resource.data.projectId)
+        ) &&
+        request.resource.data.quantity > 0;
+
+      allow update: if isSignedIn() &&
+        (
+          hasRole(resource.data.projectId, ['owner', 'admin', 'worker']) ||
+          canManageProject(resource.data.projectId)
+        ) &&
+        request.resource.data.projectId == resource.data.projectId &&
+        request.resource.data.quantity > 0;
+
+      allow delete: if isSignedIn() &&
+        (
+          hasRole(resource.data.projectId, ['owner', 'admin', 'worker']) ||
+          canManageProject(resource.data.projectId)
+        );
+    }
+
+    match /catalog_entries/{entryId} {
+      allow read: if canReadCatalog(resource.data);
+      allow create: if canWriteCatalogCreate(request.resource.data) &&
+        request.resource.data.nameLower == request.resource.data.name.lower();
+      allow update: if canWriteCatalogExisting(resource.data) &&
+        request.resource.data.createdBy == resource.data.createdBy &&
+        catalogWorkgroupId(request.resource.data) == catalogWorkgroupId(resource.data) &&
+        request.resource.data.nameLower == request.resource.data.name.lower();
+      allow delete: if canWriteCatalogExisting(resource.data);
+    }
+    match /project_notes/{noteId} {
+      allow read: if canReadProject(resource.data.projectId);
+
+      allow create: if isSignedIn() &&
+        (
+          hasRole(request.resource.data.projectId, ['owner', 'admin', 'worker']) ||
+          canManageProject(request.resource.data.projectId)
+        ) &&
+        request.resource.data.text is string &&
+        request.resource.data.text.size() > 0;
+
+      allow update: if isSignedIn() &&
+        (
+          hasRole(resource.data.projectId, ['owner', 'admin', 'worker']) ||
+          canManageProject(resource.data.projectId)
+        ) &&
+        request.resource.data.projectId == resource.data.projectId &&
+        request.resource.data.createdBy == resource.data.createdBy &&
+        request.resource.data.text is string &&
+        request.resource.data.text.size() > 0;
+
+      allow delete: if isSignedIn() &&
+        (
+          hasRole(resource.data.projectId, ['owner', 'admin', 'worker']) ||
+          canManageProject(resource.data.projectId)
+        );
+    }
+    match /work_logs/{logId} {
+      allow read: if canReadProject(resource.data.projectId);
+
+      allow create: if isSignedIn() &&
+        (
+          hasRole(request.resource.data.projectId, ['owner', 'admin', 'worker']) ||
+          canManageProject(request.resource.data.projectId)
+        ) &&
+        request.resource.data.hours is number &&
+        request.resource.data.hours > 0 &&
+        request.resource.data.worker is string &&
+        request.resource.data.worker.size() > 0;
+
+      allow update: if isSignedIn() &&
+        (
+          hasRole(resource.data.projectId, ['owner', 'admin', 'worker']) ||
+          canManageProject(resource.data.projectId)
+        ) &&
+        request.resource.data.projectId == resource.data.projectId &&
+        request.resource.data.createdBy == resource.data.createdBy &&
+        request.resource.data.hours is number &&
+        request.resource.data.hours > 0 &&
+        request.resource.data.worker is string &&
+        request.resource.data.worker.size() > 0;
+
+      allow delete: if isSignedIn() &&
+        (
+          hasRole(resource.data.projectId, ['owner', 'admin', 'worker']) ||
+          canManageProject(resource.data.projectId)
+        );
+    }
+    match /project_photos/{photoId} {
+      allow read: if canReadProject(resource.data.projectId);
+
+      allow create: if isSignedIn() &&
+        (
+          hasRole(request.resource.data.projectId, ['owner', 'admin', 'worker']) ||
+          canManageProject(request.resource.data.projectId)
+        ) &&
+        request.resource.data.createdBy == request.auth.uid;
+
+      allow update: if isSignedIn() &&
+        (
+          resource.data.createdBy == request.auth.uid ||
+          canManageProject(resource.data.projectId)
+        ) &&
+        request.resource.data.projectId == resource.data.projectId &&
+        request.resource.data.createdBy == resource.data.createdBy;
+
+      allow delete: if isSignedIn() &&
+        (
+          hasRole(resource.data.projectId, ['owner', 'admin', 'worker']) ||
+          canManageProject(resource.data.projectId)
+        );
+    }
+    match /invitations/{invitationId} {
+      allow read: if isSignedIn() && (
+        (
+          resource.data.projectId is string &&
+          canManageProject(resource.data.projectId)
+        ) ||
+        (
+          resource.data.workgroupId is string &&
+          canManageWorkgroup(resource.data.workgroupId)
+        ) ||
+        userEmail() == resource.data.email
+      );
+
+      allow create: if isSignedIn() && (
+        (
+          request.resource.data.projectId is string &&
+          canManageProject(request.resource.data.projectId) &&
+          request.resource.data.role in ['owner', 'admin', 'worker', 'viewer']
+        ) ||
+        (
+          request.resource.data.workgroupId is string &&
+          canManageWorkgroup(request.resource.data.workgroupId) &&
+          request.resource.data.role in ['owner', 'admin', 'member']
+        )
+      );
+
+      allow update: if isSignedIn() && (
+        (
+          resource.data.projectId is string &&
+          canManageProject(resource.data.projectId)
+        ) ||
+        (
+          resource.data.workgroupId is string &&
+          canManageWorkgroup(resource.data.workgroupId)
+        ) ||
+        userEmail() == resource.data.email
+      );
+
+      allow delete: if isSignedIn() && (
+        (
+          resource.data.projectId is string &&
+          canManageProject(resource.data.projectId)
+        ) ||
+        (
+          resource.data.workgroupId is string &&
+          canManageWorkgroup(resource.data.workgroupId)
+        )
+      );
+    }
+
+    match /app_notifications/{notificationId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() &&
+        request.resource.data.userId is string &&
+        request.resource.data.createdBy == request.auth.uid;
+      allow update: if isSignedIn() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == resource.data.userId;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+  }
+}
+
+

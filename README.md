@@ -40,6 +40,30 @@ Dann im Browser:
 http://localhost:3000
 ```
 
+## Live-Workflow
+
+Fuer den Live-Upload auf normales FTP/Webhosting:
+
+```bash
+npm run live:build
+```
+
+Danach entsteht:
+
+- `out/` mit dem fertigen statischen Export
+
+Wichtig fuer den Upload:
+
+- Nicht den Ordner `out` selbst hochladen
+- Sondern den Inhalt von `out` direkt ins Webroot bei easyname
+
+Empfohlener Ablauf fuer Updates:
+
+1. `npm run live:build`
+2. alten Inhalt im Webroot sichern oder ersetzen
+3. neuen Inhalt aus `out` hochladen
+4. Webseite einmal hart neu laden
+
 ## Firebase Web Setup
 
 In Firebase Console:

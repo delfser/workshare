@@ -1,14 +1,14 @@
 :root {
-  --bg: #eef3f8;
-  --bg-elevated: rgba(255, 255, 255, 0.82);
+  --bg: #edf2f7;
+  --bg-elevated: #ffffff;
   --bg-strong: #ffffff;
-  --surface-border: rgba(60, 81, 107, 0.16);
-  --surface-shadow: 0 24px 60px rgba(33, 51, 74, 0.12);
-  --text: #132033;
-  --text-muted: #5e6e82;
-  --brand: #3d5f97;
-  --brand-strong: #284b83;
-  --accent: #dbe7fb;
+  --surface-border: rgba(86, 108, 141, 0.14);
+  --surface-shadow: 0 10px 28px rgba(41, 58, 89, 0.08);
+  --text: #1f2b3d;
+  --text-muted: #6f7f96;
+  --brand: #5576a8;
+  --brand-strong: #35527e;
+  --accent: #dfe9f8;
   --success: #2d7a56;
   --warning: #b67c29;
   --danger: #b04f58;
@@ -25,10 +25,7 @@ body {
   margin: 0;
   color: var(--text);
   font-family: var(--font-body), sans-serif;
-  background:
-    radial-gradient(circle at top left, rgba(95, 131, 197, 0.18), transparent 24%),
-    radial-gradient(circle at 85% 12%, rgba(170, 192, 235, 0.28), transparent 22%),
-    linear-gradient(180deg, #f5f8fc 0%, var(--bg) 55%, #e8eef6 100%);
+  background: linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

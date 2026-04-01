@@ -15,7 +15,12 @@ export function PwaInit() {
       return;
     }
 
-    void navigator.serviceWorker.register("/sw.js", { scope: "/" });
+    void navigator.serviceWorker
+      .register("/sw.js?v=20260401", { scope: "/" })
+      .then((registration) => {
+        void registration.update();
+      })
+      .catch(() => undefined);
   }, []);
 
   return null;

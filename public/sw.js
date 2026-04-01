@@ -1,15 +1,24 @@
-const CACHE_NAME = "workshare-web-v5";
-const APP_SHELL = [
-  "/",
-  "/project/",
-  "/manifest.json",
-  "/manifest.webmanifest",
-  "/workshare-logo.png",
-];
+const CACHE_NAME = "workshare-web-v6";
+const APP_SHELL = ["/", "/project/", "/manifest.json", "/manifest.webmanifest", "/workshare-logo.png"];
+
+function canBeCached(request, response) {
+  return request.method === "GET" && response && response.status === 200 && response.type !== "opaque";
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()),
+    caches
+      .open(CACHE_NAME)
+      .then(async (cache) => {
+        for (const url of APP_SHELL) {
+          try {
+            await cache.add(url);
+          } catch {
+            // App shell entries are optional here; runtime fetch will refill cache.
+          }
+        }
+      })
+      .then(() => self.skipWaiting()),
   );
 });
 
@@ -20,6 +29,12 @@ self.addEventListener("activate", (event) => {
       .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
       .then(() => self.clients.claim()),
   );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("fetch", (event) => {
@@ -33,33 +48,31 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          return response;
-        })
-        .catch(async () => {
-          const cached = await caches.match(request);
-          return cached || caches.match("/");
-        }),
-    );
-    return;
-  }
-
   event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) {
-        return cached;
-      }
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
 
-      return fetch(request).then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-        return response;
-      });
-    }),
+      try {
+        const fresh = await fetch(request);
+        if (canBeCached(request, fresh)) {
+          void cache.put(request, fresh.clone());
+        }
+        return fresh;
+      } catch {
+        const cached = await cache.match(request);
+        if (cached) {
+          return cached;
+        }
+
+        if (request.mode === "navigate") {
+          const fallback = await cache.match("/");
+          if (fallback) {
+            return fallback;
+          }
+        }
+
+        return Response.error();
+      }
+    })(),
   );
 });

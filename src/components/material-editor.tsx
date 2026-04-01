@@ -1,14 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   addMaterial,
   deleteMaterial,
   updateMaterial,
 } from "@/lib/material-actions";
-import { searchCatalogEntriesByPrefix } from "@/lib/catalog-actions";
 import type { CatalogEntry, MaterialItem } from "@/lib/types";
 
 import styles from "./project-detail.module.css";
@@ -19,6 +18,7 @@ type MaterialEditorProps = {
   projectId: string;
   userId: string;
   workgroupId?: string | null;
+  catalogEntries?: CatalogEntry[];
   material?: MaterialItem | null;
   onClose: () => void;
 };
@@ -37,6 +37,7 @@ export function MaterialEditor({
   projectId,
   userId,
   workgroupId = null,
+  catalogEntries = [],
   material,
   onClose,
 }: MaterialEditorProps) {
@@ -48,7 +49,17 @@ export function MaterialEditor({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [catalogHints, setCatalogHints] = useState<CatalogEntry[]>([]);
-  const catalogListId = useId();
+  const [catalogHintsOpen, setCatalogHintsOpen] = useState(false);
+  const closeHintsTimeoutRef = useRef<number | null>(null);
+
+  function clearCloseHintsTimeout() {
+    if (closeHintsTimeoutRef.current === null) {
+      return;
+    }
+
+    window.clearTimeout(closeHintsTimeoutRef.current);
+    closeHintsTimeoutRef.current = null;
+  }
 
   useEffect(() => {
     function handleEscape(event: KeyboardEvent) {
@@ -61,28 +72,64 @@ export function MaterialEditor({
     return () => window.removeEventListener("keydown", handleEscape);
   }, [busy, onClose]);
 
+  useEffect(
+    () => () => {
+      clearCloseHintsTimeout();
+    },
+    [],
+  );
+
   useEffect(() => {
     const trimmedName = name.trim();
     if (trimmedName.length < 2 || busy) {
       setCatalogHints([]);
+      setCatalogHintsOpen(false);
+      return;
+    }
+
+    const normalizedPrefix = trimmedName.toLowerCase();
+    const normalizedWorkgroupId = (workgroupId ?? "").trim();
+    const localMatchesRaw = catalogEntries
+      .filter((entry) => {
+        if (!entry.isActive) {
+          return false;
+        }
+
+        const ownerMatch = entry.createdBy === userId && entry.workgroupId === null;
+        const workgroupMatch =
+          normalizedWorkgroupId.length > 0 && entry.workgroupId === normalizedWorkgroupId;
+        if (!ownerMatch && !workgroupMatch) {
+          return false;
+        }
+
+        const key = (entry.nameLower || entry.name).trim().toLowerCase();
+        return key.startsWith(normalizedPrefix);
+      })
+      .sort((left, right) => left.name.localeCompare(right.name, "de", { sensitivity: "base" }));
+
+    const deduped = new Map<string, CatalogEntry>();
+    localMatchesRaw.forEach((entry) => {
+      const key = `${(entry.nameLower || entry.name).trim().toLowerCase()}|${entry.unit.trim().toLowerCase()}`;
+      if (!deduped.has(key)) {
+        deduped.set(key, entry);
+      }
+    });
+
+    const localMatches = [...deduped.values()].slice(0, 12);
+
+    if (localMatches.length > 0) {
+      setCatalogHints(localMatches);
+      setCatalogHintsOpen(true);
       return;
     }
 
     const timeoutId = window.setTimeout(async () => {
-      try {
-        const results = await searchCatalogEntriesByPrefix({
-          userId,
-          prefix: trimmedName,
-          workgroupId,
-        });
-        setCatalogHints(results);
-      } catch {
-        setCatalogHints([]);
-      }
+      setCatalogHints([]);
+      setCatalogHintsOpen(false);
     }, 180);
 
     return () => window.clearTimeout(timeoutId);
-  }, [busy, name, userId, workgroupId]);
+  }, [busy, catalogEntries, name, userId, workgroupId]);
 
   function handleNameChange(nextValue: string) {
     setName(nextValue);
@@ -93,6 +140,21 @@ export function MaterialEditor({
     if (matched && matched.unit) {
       setUnit(matched.unit);
     }
+
+    if (normalized.length < 2) {
+      setCatalogHintsOpen(false);
+      return;
+    }
+
+    setCatalogHintsOpen(true);
+  }
+
+  function handleCatalogHintSelect(entry: CatalogEntry) {
+    setName(entry.name);
+    if (entry.unit) {
+      setUnit(entry.unit);
+    }
+    setCatalogHintsOpen(false);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -198,16 +260,45 @@ export function MaterialEditor({
               <input
                 value={name}
                 onChange={(event) => handleNameChange(event.target.value)}
+                onFocus={() => {
+                  if (catalogHints.length > 0 && name.trim().length >= 2) {
+                    clearCloseHintsTimeout();
+                    setCatalogHintsOpen(true);
+                  }
+                }}
+                onBlur={() => {
+                  clearCloseHintsTimeout();
+                  closeHintsTimeoutRef.current = window.setTimeout(() => {
+                    setCatalogHintsOpen(false);
+                  }, 120);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    setCatalogHintsOpen(false);
+                  }
+                }}
                 placeholder="Name"
-                list={catalogListId}
+                autoComplete="off"
                 disabled={busy}
               />
-              <datalist id={catalogListId}>
-                {catalogHints.map((item) => (
-                  <option key={item.id} value={item.name} />
-                ))}
-              </datalist>
             </label>
+            {catalogHintsOpen && catalogHints.length > 0 ? (
+              <ul className={styles.catalogHintList} role="listbox" aria-label="Katalogvorschlaege">
+                {catalogHints.map((item) => (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      className={styles.catalogHintButton}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => handleCatalogHintSelect(item)}
+                    >
+                      <span>{item.name}</span>
+                      <small>{item.unit}</small>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </section>
 
           <section className={styles.formCard}>

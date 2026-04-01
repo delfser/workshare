@@ -26,9 +26,11 @@ import {
   isSuperuser,
   workgroupRoleToProjectRole,
 } from "@/lib/project-permissions";
+import { subscribeToCatalogEntries } from "@/lib/catalog-stream";
 import { subscribeToUserProfile } from "@/lib/user-profile-stream";
 import { deleteWorkLog } from "@/lib/worklog-actions";
 import type {
+  CatalogEntry,
   MaterialItem,
   ProjectMember,
   ProjectNote,
@@ -214,6 +216,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   const [projectError, setProjectError] = useState("");
   const [members, setMembers] = useState<ProjectMember[]>([]);
   const [materials, setMaterials] = useState<MaterialItem[]>([]);
+  const [catalogEntries, setCatalogEntries] = useState<CatalogEntry[]>([]);
   const [notes, setNotes] = useState<ProjectNote[]>([]);
   const [workLogs, setWorkLogs] = useState<WorkLog[]>([]);
   const [photos, setPhotos] = useState<ProjectPhoto[]>([]);
@@ -288,6 +291,21 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
       () => undefined,
     );
   }, [project, projectId]);
+
+  useEffect(() => {
+    if (!user) {
+      setCatalogEntries([]);
+      return;
+    }
+
+    const workgroupIds = project?.workgroupId ? [project.workgroupId] : [];
+    return subscribeToCatalogEntries(
+      user.uid,
+      workgroupIds,
+      (nextEntries) => setCatalogEntries(nextEntries),
+      () => undefined,
+    );
+  }, [project?.workgroupId, user]);
 
   useEffect(() => {
     const workgroupId = project?.workgroupId ?? null;
@@ -1561,6 +1579,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
           projectId={project.id}
           userId={user.uid}
           workgroupId={project.workgroupId ?? null}
+          catalogEntries={catalogEntries}
           onClose={() => setIsCreatingMaterial(false)}
         />
       ) : null}
@@ -1570,6 +1589,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
           projectId={project.id}
           userId={user.uid}
           workgroupId={project.workgroupId ?? null}
+          catalogEntries={catalogEntries}
           material={editingMaterial}
           onClose={() => setEditingMaterial(null)}
         />

@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:in_app_update/in_app_update.dart' as play_update;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -9,6 +11,7 @@ import '../core/app_config.dart';
 import '../models/app_update_info.dart';
 import '../models/enums.dart';
 import '../models/project.dart';
+import '../models/project_member.dart';
 import '../providers/auth_provider.dart';
 import '../services/app_update_service.dart';
 import '../services/invitation_service.dart';
@@ -30,6 +33,7 @@ class ProjectsScreen extends StatefulWidget {
 
 class _ProjectsScreenState extends State<ProjectsScreen> {
   static const _seenUpdateBuildKey = 'seen_update_build';
+  static const _seenPlayStoreUpdateVersionKey = 'seen_playstore_update_version';
 
   final _projectService = ProjectService();
   final _invitationService = InvitationService();
@@ -46,9 +50,19 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   StreamSubscription<int>? _appNotificationCountSub;
   String? _signalsEmail;
   bool _checkingStartupUpdate = false;
+  bool _checkingPlayStoreUpdate = false;
   bool _suppressBadgeSignals = false;
   Set<String> _seenInvitationIds = <String>{};
   Set<String> _latestInvitationIds = <String>{};
+  final Map<String, bool> _archivedOverrides = {};
+  final ValueNotifier<int> _pendingSignals = ValueNotifier<int>(0);
+  String _projectsStreamKey = '';
+  Stream<List<Project>>? _projectsStream;
+  Stream<List<ProjectMember>>? _membershipsStream;
+  String? _projectsUserId;
+  String? _membershipsUserId;
+  List<ProjectMember> _lastMemberships = const <ProjectMember>[];
+  List<Project> _lastProjects = const <Project>[];
 
   @override
   void initState() {
@@ -56,6 +70,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _prepareNotificationsForCurrentUser();
+      _checkPlayStoreUpdatePopup();
     });
   }
 
@@ -63,6 +78,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   void dispose() {
     _invitationCountSub?.cancel();
     _appNotificationCountSub?.cancel();
+    _pendingSignals.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -77,13 +93,11 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       await _appNotificationCountSub?.cancel();
       _invitationCountSub = null;
       _appNotificationCountSub = null;
-      if (!mounted) return;
-      setState(() {
-        _signalsEmail = null;
-        _pendingInvitationCount = 0;
-        _pendingAppNotificationCount = 0;
-        _pendingUpdateNotice = null;
-      });
+      _signalsEmail = null;
+      _pendingInvitationCount = 0;
+      _pendingAppNotificationCount = 0;
+      _pendingUpdateNotice = null;
+      _updatePendingSignals();
       return;
     }
 
@@ -97,29 +111,27 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         (prefs.getStringList(_seenInvitationIdsKey(email)) ?? const []).toSet();
     _invitationCountSub =
         _invitationService.streamPendingInvitations(email).listen((docs) {
-      if (!mounted) return;
       _latestInvitationIds = docs.map((d) => d.id).toSet();
       final unseen =
           docs.where((d) => !_seenInvitationIds.contains(d.id)).length;
       if (_suppressBadgeSignals) {
-        if (_pendingInvitationCount != 0) {
-          setState(() => _pendingInvitationCount = 0);
-        }
+        _pendingInvitationCount = 0;
+        _updatePendingSignals();
         return;
       }
-      setState(() => _pendingInvitationCount = unseen);
+      _pendingInvitationCount = unseen;
+      _updatePendingSignals();
     });
     _appNotificationCountSub = _notificationService
         .streamUnreadNotificationCount(user.uid)
         .listen((unreadCount) {
-      if (!mounted) return;
       if (_suppressBadgeSignals) {
-        if (_pendingAppNotificationCount != 0) {
-          setState(() => _pendingAppNotificationCount = 0);
-        }
+        _pendingAppNotificationCount = 0;
+        _updatePendingSignals();
         return;
       }
-      setState(() => _pendingAppNotificationCount = unreadCount);
+      _pendingAppNotificationCount = unreadCount;
+      _updatePendingSignals();
     });
 
     await _checkOneTimeUpdateNotice();
@@ -135,7 +147,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       final seenBuild = prefs.getInt(_seenUpdateBuildKey) ?? 0;
       if (!mounted) return;
       if (update.buildNumber > seenBuild) {
-        setState(() => _pendingUpdateNotice = update);
+        _pendingUpdateNotice = update;
+        _updatePendingSignals();
       }
     } catch (_) {
       // Startup check should not block UI.
@@ -144,18 +157,78 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     }
   }
 
+  Future<void> _checkPlayStoreUpdatePopup() async {
+    if (!Platform.isAndroid || _checkingPlayStoreUpdate) return;
+    _checkingPlayStoreUpdate = true;
+    try {
+      final info = await play_update.InAppUpdate.checkForUpdate();
+      final available = info.updateAvailability ==
+          play_update.UpdateAvailability.updateAvailable;
+      if (!available || !mounted) return;
+
+      final availableVersion = info.availableVersionCode ?? 0;
+      final prefs = await SharedPreferences.getInstance();
+      final seenVersion = prefs.getInt(_seenPlayStoreUpdateVersionKey) ?? 0;
+
+      if (availableVersion > 0 && availableVersion <= seenVersion) {
+        return;
+      }
+
+      if (!mounted) return;
+
+      final wantsUpdate = await showDialog<bool>(
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              title: const Text('Update verfuegbar'),
+              content: const Text(
+                'Im Play Store ist eine neuere Version von WorkShare verfuegbar. '
+                'Moechtest du jetzt aktualisieren?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Spaeter'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: const Text('Aktualisieren'),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+
+      if (!mounted) return;
+
+      if (!wantsUpdate) {
+        if (availableVersion > 0) {
+          await prefs.setInt(_seenPlayStoreUpdateVersionKey, availableVersion);
+        }
+        return;
+      }
+
+      try {
+        await play_update.InAppUpdate.performImmediateUpdate();
+      } catch (_) {
+        await play_update.InAppUpdate.startFlexibleUpdate();
+        await play_update.InAppUpdate.completeFlexibleUpdate();
+      }
+    } catch (_) {
+      // Play Store update check should never block the normal app flow.
+    } finally {
+      _checkingPlayStoreUpdate = false;
+    }
+  }
+
   Future<void> _openNotifications() async {
     final user = context.read<AuthProvider>().user;
     final email = (user?.email ?? '').trim().toLowerCase();
     final pendingUpdate = _pendingUpdateNotice;
-    if (mounted) {
-      setState(() {
-        _suppressBadgeSignals = true;
-        _pendingInvitationCount = 0;
-        _pendingAppNotificationCount = 0;
-        _pendingUpdateNotice = null;
-      });
-    }
+    _suppressBadgeSignals = true;
+    _pendingInvitationCount = 0;
+    _pendingAppNotificationCount = 0;
+    _pendingUpdateNotice = null;
+    _updatePendingSignals();
     final prefs = await SharedPreferences.getInstance();
 
     if (email.isNotEmpty) {
@@ -197,14 +270,40 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     if (!mounted) return;
     await Future.delayed(const Duration(milliseconds: 350));
     if (!mounted) return;
-    setState(() {
-      _suppressBadgeSignals = false;
-      _pendingInvitationCount = 0;
-      _pendingAppNotificationCount = 0;
-    });
+    _suppressBadgeSignals = false;
+    _pendingInvitationCount = 0;
+    _pendingAppNotificationCount = 0;
+    _updatePendingSignals();
   }
 
   String _seenInvitationIdsKey(String email) => 'seen_invitation_ids_$email';
+
+  void _updatePendingSignals() {
+    final nextValue = _pendingInvitationCount +
+        _pendingAppNotificationCount +
+        (_pendingUpdateNotice == null ? 0 : 1);
+    if (_pendingSignals.value != nextValue) {
+      _pendingSignals.value = nextValue;
+    }
+  }
+
+  Stream<List<Project>> _getProjectsStream(List<String> projectIds) {
+    final ids = projectIds.toSet().toList()..sort();
+    final key = ids.join('|');
+    if (_projectsStream == null || _projectsStreamKey != key) {
+      _projectsStreamKey = key;
+      _projectsStream = _projectService.streamProjectsByIds(ids);
+    }
+    return _projectsStream!;
+  }
+
+  Stream<List<ProjectMember>> _getMembershipsStream(String userId) {
+    if (_membershipsStream == null || _membershipsUserId != userId) {
+      _membershipsUserId = userId;
+      _membershipsStream = _projectService.streamUserMemberships(userId);
+    }
+    return _membershipsStream!;
+  }
 
   bool _canArchive(ProjectRole role) =>
       role == ProjectRole.owner || role == ProjectRole.admin;
@@ -226,11 +325,39 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     }
   }
 
-  Future<void> _handleArchive(String projectId, bool archived) async {
+  Future<bool> _handleArchive(String projectId, bool archived) async {
+    if (archived) {
+      final confirm = await showDialog<bool>(
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              title: const Text('Projekt archivieren?'),
+              content: const Text(
+                'Willst du dieses Projekt wirklich als erledigt ablegen?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Abbrechen'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: const Text('Archivieren'),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+      if (!confirm) return false;
+    }
+
+    if (mounted) {
+      setState(() => _archivedOverrides[projectId] = archived);
+    }
+
     try {
       await _projectService.setProjectArchived(
           projectId: projectId, archived: archived);
-      if (!mounted) return;
+      if (!mounted) return true;
       showAppNotice(
         context,
         archived
@@ -238,14 +365,17 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
             : 'Projekt wieder aktiviert.',
         type: AppNoticeType.success,
       );
+      return true;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
+      setState(() => _archivedOverrides.remove(projectId));
       showAppNotice(
         context,
         friendlyErrorMessage(e,
             fallback: 'Projektstatus konnte nicht geändert werden.'),
         type: AppNoticeType.error,
       );
+      return false;
     }
   }
 
@@ -407,9 +537,16 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       });
     }
 
-    final pendingCount = _pendingInvitationCount +
-        _pendingAppNotificationCount +
-        (_pendingUpdateNotice == null ? 0 : 1);
+    if (_projectsUserId != user.uid) {
+      _projectsUserId = user.uid;
+      _projectsStream = null;
+      _projectsStreamKey = '';
+      _membershipsStream = null;
+      _membershipsUserId = null;
+      _lastMemberships = const <ProjectMember>[];
+      _lastProjects = const <Project>[];
+      _archivedOverrides.clear();
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -428,24 +565,27 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
           IconButton(
             onPressed: _openNotifications,
             tooltip: 'Benachrichtigungen',
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(Icons.notifications_none_outlined),
-                if (pendingCount > 0)
-                  Positioned(
-                    right: -2,
-                    top: -2,
-                    child: Container(
-                      width: 9,
-                      height: 9,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.error,
-                        shape: BoxShape.circle,
+            icon: ValueListenableBuilder<int>(
+              valueListenable: _pendingSignals,
+              builder: (context, pendingCount, _) => Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const Icon(Icons.notifications_none_outlined),
+                  if (pendingCount > 0)
+                    Positioned(
+                      right: -2,
+                      top: -2,
+                      child: Container(
+                        width: 9,
+                        height: 9,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.error,
+                          shape: BoxShape.circle,
+                        ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
           IconButton(
@@ -475,37 +615,105 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         },
         child: const Icon(Icons.add),
       ),
-      body: StreamBuilder(
-        stream: _projectService.streamUserMemberships(user.uid),
+      body: StreamBuilder<List<ProjectMember>>(
+        stream: _getMembershipsStream(user.uid),
+        initialData: const <ProjectMember>[],
         builder: (context, memberSnapshot) {
+          final incomingMemberships = memberSnapshot.data;
+          List<ProjectMember> memberships;
+          if (incomingMemberships != null && incomingMemberships.isNotEmpty) {
+            memberships = incomingMemberships;
+            _lastMemberships = incomingMemberships;
+          } else if (_lastMemberships.isNotEmpty &&
+              memberSnapshot.connectionState != ConnectionState.done) {
+            memberships = _lastMemberships;
+          } else {
+            memberships = incomingMemberships ?? _lastMemberships;
+          }
+
           if (memberSnapshot.connectionState == ConnectionState.waiting &&
-              !memberSnapshot.hasData) {
+              memberships.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (memberSnapshot.hasError) {
+          if (memberSnapshot.hasError && memberships.isEmpty) {
             return const Center(
                 child: Text('Mitgliedschaften konnten nicht geladen werden.'));
           }
 
-          final memberships = memberSnapshot.data ?? const [];
           final roleByProjectId = {
             for (final m in memberships) m.projectId: m.role,
           };
+          final projectsStream =
+              _getProjectsStream(roleByProjectId.keys.toList());
 
-          return StreamBuilder(
-            stream: _projectService
-                .streamProjectsByIds(roleByProjectId.keys.toList()),
+          return StreamBuilder<List<Project>>(
+            stream: projectsStream,
+            initialData: const <Project>[],
             builder: (context, snapshot) {
+              final incomingProjects = snapshot.data;
+              List<Project> sourceProjects;
+              if (incomingProjects != null && incomingProjects.isNotEmpty) {
+                sourceProjects = incomingProjects;
+                _lastProjects = incomingProjects;
+              } else if (_lastProjects.isNotEmpty &&
+                  roleByProjectId.isNotEmpty &&
+                  snapshot.connectionState != ConnectionState.done) {
+                sourceProjects = _lastProjects;
+              } else {
+                sourceProjects = incomingProjects ?? _lastProjects;
+              }
+
               if (snapshot.connectionState == ConnectionState.waiting &&
-                  !snapshot.hasData) {
+                  sourceProjects.isEmpty) {
                 return const Center(child: CircularProgressIndicator());
               }
-              if (snapshot.hasError) {
+              if (snapshot.hasError && sourceProjects.isEmpty) {
                 return const Center(
                     child: Text('Projekte konnten nicht geladen werden.'));
               }
 
-              final all = snapshot.data ?? const [];
+              List<Project> all = sourceProjects.map((project) {
+                final overrideArchived = _archivedOverrides[project.id];
+                if (overrideArchived == null) return project;
+                if (overrideArchived == project.archived) {
+                  _archivedOverrides.remove(project.id);
+                  return project;
+                }
+                return Project(
+                  id: project.id,
+                  name: project.name,
+                  description: project.description,
+                  ownerId: project.ownerId,
+                  workgroupId: project.workgroupId,
+                  projectCode: project.projectCode,
+                  materialSortMode: project.materialSortMode,
+                  archived: overrideArchived,
+                  createdAt: project.createdAt,
+                  updatedAt: project.updatedAt,
+                );
+              }).toList();
+              if (all.isEmpty && _lastProjects.isNotEmpty) {
+                all = _lastProjects.map((project) {
+                  final overrideArchived = _archivedOverrides[project.id];
+                  if (overrideArchived == null) return project;
+                  if (overrideArchived == project.archived) {
+                    _archivedOverrides.remove(project.id);
+                    return project;
+                  }
+                  return Project(
+                    id: project.id,
+                    name: project.name,
+                    description: project.description,
+                    ownerId: project.ownerId,
+                    workgroupId: project.workgroupId,
+                    projectCode: project.projectCode,
+                    materialSortMode: project.materialSortMode,
+                    archived: overrideArchived,
+                    createdAt: project.createdAt,
+                    updatedAt: project.updatedAt,
+                  );
+                }).toList();
+              }
               final search = _searchCtrl.text.trim().toLowerCase();
               final filtered = search.isEmpty
                   ? all

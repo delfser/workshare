@@ -1,7 +1,7 @@
 ﻿name: workshare
 description: WorkShare - Materialverwaltung fuer Handwerker mit Firebase Live-Sync
 publish_to: 'none'
-version: 1.0.15+16
+version: 1.0.19+20
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -28,6 +28,7 @@ dependencies:
   flutter_image_compress: ^2.4.0
   package_info_plus: ^8.1.1
   http: ^1.2.2
+  in_app_update: ^4.2.3
 
 dev_dependencies:
   flutter_test:

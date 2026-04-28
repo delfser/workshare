@@ -33,9 +33,14 @@ service cloud.firestore {
     function memberId(projectId, uid) {
       return projectId + '_' + uid;
     }
+    function memberIdLegacy(projectId, uid) {
+      return uid + '_' + projectId;
+    }
 
     function memberDoc(projectId, uid) {
-      return get(/databases/$(database)/documents/project_members/$(memberId(projectId, uid)));
+      return exists(/databases/$(database)/documents/project_members/$(memberId(projectId, uid)))
+        ? get(/databases/$(database)/documents/project_members/$(memberId(projectId, uid)))
+        : get(/databases/$(database)/documents/project_members/$(memberIdLegacy(projectId, uid)));
     }
     function joinCodeDoc(code) {
       return get(/databases/$(database)/documents/project_join_codes/$(code));
@@ -140,7 +145,10 @@ service cloud.firestore {
 
     function isProjectMember(projectId) {
       return isSignedIn() &&
-        exists(/databases/$(database)/documents/project_members/$(memberId(projectId, request.auth.uid)));
+        (
+          exists(/databases/$(database)/documents/project_members/$(memberId(projectId, request.auth.uid))) ||
+          exists(/databases/$(database)/documents/project_members/$(memberIdLegacy(projectId, request.auth.uid)))
+        );
     }
     function canReadProject(projectId) {
       return isProjectMember(projectId) ||
@@ -240,7 +248,8 @@ service cloud.firestore {
     }
 
     match /projects/{projectId} {
-      allow read: if isProjectMember(projectId) ||
+      allow read: if isProjectOwner(projectId) ||
+        isProjectMember(projectId) ||
         (
           resource.data.workgroupId is string &&
           isWorkgroupMember(resource.data.workgroupId)
@@ -259,6 +268,7 @@ service cloud.firestore {
     match /project_members/{memberIdDoc} {
       allow read: if isSignedIn() && (
         memberIdDoc.matches('.*_' + request.auth.uid + '$') ||
+        memberIdDoc.matches(request.auth.uid + '_.*') ||
         resource.data.userId == request.auth.uid ||
         canManageProject(resource.data.projectId) ||
         canReadProject(resource.data.projectId)

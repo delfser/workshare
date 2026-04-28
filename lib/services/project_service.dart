@@ -73,30 +73,29 @@ class ProjectService {
       return Stream.value(const <Project>[]);
     }
 
-    final streams = <Stream<List<Project>>>[];
-    for (var i = 0; i < ids.length; i += 30) {
-      final chunk = ids.sublist(i, i + 30 > ids.length ? ids.length : i + 30);
-      streams.add(
-        FirebaseService.projects
-            .where(FieldPath.documentId, whereIn: chunk)
-            .snapshots()
-            .handleError((_, __) {})
-            .map((snapshot) {
-          final projects = <Project>[];
-          for (final doc in snapshot.docs) {
-            try {
-              projects.add(Project.fromMap(doc.id, doc.data()));
-            } catch (_) {}
-          }
-          return projects;
-        }),
-      );
-    }
+    // One permission/stale-entry issue must not break the complete list.
+    final streams = ids
+        .map(
+          (projectId) => FirebaseService.projects
+              .doc(projectId)
+              .snapshots()
+              .map((doc) {
+                if (!doc.exists || doc.data() == null) return null;
+                try {
+                  return Project.fromMap(doc.id, doc.data()!);
+                } catch (_) {
+                  return null;
+                }
+              })
+              .onErrorReturn(null)
+              .startWith(null),
+        )
+        .toList(growable: false);
 
-    return CombineLatestStream.list(streams).map((chunks) {
-      final all = chunks.expand((e) => e).toList();
-      all.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-      return all;
+    return CombineLatestStream.list(streams).map((items) {
+      final projects = items.whereType<Project>().toList()
+        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      return projects;
     });
   }
 

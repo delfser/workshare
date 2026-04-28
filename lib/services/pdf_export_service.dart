@@ -37,7 +37,6 @@ class PdfExportService {
     } catch (_) {
       logoImage = null;
     }
-    final totalHours = workLogs.fold<double>(0, (sum, log) => sum + log.hours);
     final longestUnitLen = materials.isEmpty
         ? 0
         : materials
@@ -135,22 +134,6 @@ class PdfExportService {
                 cellAlignments: {
                   1: pw.Alignment.centerRight,
                 },
-              ),
-            );
-            content.add(pw.SizedBox(height: 10));
-            content.add(
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text(
-                    'Gesamtstunden',
-                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                  ),
-                  pw.Text(
-                    _formatNumber(totalHours),
-                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                  ),
-                ],
               ),
             );
           }

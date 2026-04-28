@@ -305,6 +305,15 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     return _membershipsStream!;
   }
 
+  void _forceProjectReload() {
+    _projectsStream = null;
+    _projectsStreamKey = '';
+    _membershipsStream = null;
+    _lastMemberships = const <ProjectMember>[];
+    _lastProjects = const <Project>[];
+    _archivedOverrides.clear();
+  }
+
   bool _canArchive(ProjectRole role) =>
       role == ProjectRole.owner || role == ProjectRole.admin;
 
@@ -500,7 +509,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
             type: AppNoticeType.success);
       }
       if (mounted) {
-        setState(() {});
+        setState(_forceProjectReload);
       }
     } catch (e) {
       if (!mounted) return;

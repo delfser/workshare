@@ -13,6 +13,7 @@ import '../utils/app_notice.dart';
 import '../utils/error_mapper.dart';
 import '../utils/validators.dart';
 import '../widgets/brand_logo.dart';
+import 'barcode_scan_screen.dart';
 
 class MaterialFormScreen extends StatefulWidget {
   const MaterialFormScreen({super.key, required this.project, this.material});
@@ -268,6 +269,46 @@ class _MaterialFormScreenState extends State<MaterialFormScreen> {
     }
   }
 
+  Future<void> _scanAndApplyCatalogBarcode() async {
+    final user = context.read<AuthProvider>().user;
+    if (user == null) return;
+
+    final scanned = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const BarcodeScanScreen()),
+    );
+    if (!mounted || scanned == null || scanned.trim().isEmpty) return;
+
+    try {
+      final hit = await _catalogService.findByBarcodeForProject(
+        barcode: scanned,
+        userId: user.uid,
+        projectWorkgroupId: widget.project.workgroupId,
+      );
+      if (!mounted) return;
+      if (hit == null) {
+        showAppNotice(
+          context,
+          'Kein Katalogeintrag mit diesem Barcode gefunden.',
+          type: AppNoticeType.info,
+        );
+        return;
+      }
+      _selectCatalog(hit);
+      showAppNotice(
+        context,
+        'Katalogeintrag ueber Barcode uebernommen.',
+        type: AppNoticeType.success,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showAppNotice(
+        context,
+        friendlyErrorMessage(e, fallback: 'Barcode konnte nicht verarbeitet werden.'),
+        type: AppNoticeType.error,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -287,7 +328,14 @@ class _MaterialFormScreenState extends State<MaterialFormScreen> {
                       children: [
                         TextFormField(
                           controller: _nameCtrl,
-                          decoration: const InputDecoration(labelText: 'Name'),
+                          decoration: InputDecoration(
+                            labelText: 'Name',
+                            suffixIcon: IconButton(
+                              tooltip: 'Barcode scannen',
+                              onPressed: _busy ? null : _scanAndApplyCatalogBarcode,
+                              icon: const Icon(Icons.qr_code_scanner),
+                            ),
+                          ),
                           validator: (v) =>
                               Validators.requiredText(v, label: 'Name'),
                         ),

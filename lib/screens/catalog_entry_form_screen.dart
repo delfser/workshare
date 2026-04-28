@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../models/catalog_entry.dart';
 import '../providers/auth_provider.dart';
+import 'barcode_scan_screen.dart';
 import '../services/catalog_service.dart';
 import '../utils/app_notice.dart';
 import '../utils/error_mapper.dart';
@@ -24,6 +25,7 @@ class _CatalogEntryFormScreenState extends State<CatalogEntryFormScreen> {
   final _service = CatalogService();
 
   late final TextEditingController _nameCtrl;
+  late final TextEditingController _barcodeCtrl;
   late final TextEditingController _categoryCtrl;
   late String _selectedUnit;
   bool _isActive = true;
@@ -35,6 +37,7 @@ class _CatalogEntryFormScreenState extends State<CatalogEntryFormScreen> {
   void initState() {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.entry?.name ?? '');
+    _barcodeCtrl = TextEditingController(text: widget.entry?.barcode ?? '');
     _categoryCtrl = TextEditingController(text: widget.entry?.category ?? '');
     _selectedUnit =
         _units.contains(widget.entry?.unit) ? widget.entry!.unit : 'stk';
@@ -44,6 +47,7 @@ class _CatalogEntryFormScreenState extends State<CatalogEntryFormScreen> {
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _barcodeCtrl.dispose();
     _categoryCtrl.dispose();
     super.dispose();
   }
@@ -60,6 +64,7 @@ class _CatalogEntryFormScreenState extends State<CatalogEntryFormScreen> {
           entryId: widget.entry!.id,
           name: _nameCtrl.text,
           unit: _selectedUnit,
+          barcode: _barcodeCtrl.text,
           category: _categoryCtrl.text,
           isActive: _isActive,
         );
@@ -69,6 +74,7 @@ class _CatalogEntryFormScreenState extends State<CatalogEntryFormScreen> {
         await _service.createEntry(
           name: _nameCtrl.text,
           unit: _selectedUnit,
+          barcode: _barcodeCtrl.text,
           category: _categoryCtrl.text,
           createdBy: user.uid,
           workgroupId: defaultWorkgroupId,
@@ -120,6 +126,14 @@ class _CatalogEntryFormScreenState extends State<CatalogEntryFormScreen> {
     }
   }
 
+  Future<void> _scanBarcode() async {
+    final value = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const BarcodeScanScreen()),
+    );
+    if (!mounted || value == null || value.trim().isEmpty) return;
+    setState(() => _barcodeCtrl.text = value.trim());
+  }
+
   @override
   Widget build(BuildContext context) {
     final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
@@ -160,6 +174,18 @@ class _CatalogEntryFormScreenState extends State<CatalogEntryFormScreen> {
                   onChanged: (value) {
                     if (value != null) setState(() => _selectedUnit = value);
                   },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _barcodeCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Barcode (optional)',
+                    suffixIcon: IconButton(
+                      tooltip: 'Barcode scannen',
+                      onPressed: _busy ? null : _scanBarcode,
+                      icon: const Icon(Icons.qr_code_scanner),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(

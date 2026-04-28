@@ -4,6 +4,7 @@ class CatalogEntry {
     required this.name,
     required this.nameLower,
     required this.unit,
+    this.barcode,
     this.category,
     required this.createdBy,
     this.workgroupId,
@@ -16,6 +17,7 @@ class CatalogEntry {
   final String name;
   final String nameLower;
   final String unit;
+  final String? barcode;
   final String? category;
   final String createdBy;
   final String? workgroupId;
@@ -29,6 +31,7 @@ class CatalogEntry {
       name: map['name'] as String? ?? '',
       nameLower: map['nameLower'] as String? ?? '',
       unit: map['unit'] as String? ?? '',
+      barcode: map['barcode'] as String?,
       category: map['category'] as String?,
       createdBy: map['createdBy'] as String? ?? '',
       workgroupId: map['workgroupId'] as String?,
@@ -44,6 +47,7 @@ class CatalogEntry {
       'name': name,
       'nameLower': nameLower,
       'unit': unit,
+      'barcode': barcode,
       'category': category,
       'createdBy': createdBy,
       'workgroupId': workgroupId,

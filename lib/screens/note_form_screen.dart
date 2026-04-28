@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../models/project.dart';
 import '../models/project_note.dart';
@@ -29,7 +30,11 @@ class _NoteFormScreenState extends State<NoteFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _textCtrl = TextEditingController();
   final _service = ProjectNoteService();
+  final stt.SpeechToText _speech = stt.SpeechToText();
   bool _busy = false;
+  bool _speechReady = false;
+  bool _isListening = false;
+  String _speechBaseText = '';
 
   bool get _isEdit => widget.note != null;
 
@@ -37,12 +42,86 @@ class _NoteFormScreenState extends State<NoteFormScreen> {
   void initState() {
     super.initState();
     _textCtrl.text = widget.note?.text ?? '';
+    unawaited(_initSpeech());
   }
 
   @override
   void dispose() {
+    _speech.stop();
     _textCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _initSpeech() async {
+    final ready = await _speech.initialize(
+      onStatus: (status) {
+        if (!mounted) return;
+        final listening = status == 'listening';
+        if (_isListening != listening) {
+          setState(() => _isListening = listening);
+        }
+      },
+      onError: (_) {
+        if (!mounted) return;
+        setState(() => _isListening = false);
+      },
+    );
+    if (!mounted) return;
+    setState(() => _speechReady = ready);
+  }
+
+  Future<void> _toggleSpeech() async {
+    if (_busy) return;
+
+    if (_isListening) {
+      await _speech.stop();
+      if (!mounted) return;
+      setState(() => _isListening = false);
+      return;
+    }
+
+    if (!_speechReady) {
+      await _initSpeech();
+      if (!_speechReady) {
+        if (!mounted) return;
+        showAppNotice(
+          context,
+          'Spracheingabe ist auf diesem Geraet nicht verfuegbar.',
+          type: AppNoticeType.error,
+        );
+        return;
+      }
+    }
+
+    _speechBaseText = _textCtrl.text.trim();
+    final started = await _speech.listen(
+      localeId: 'de_DE',
+      listenOptions: stt.SpeechListenOptions(
+        listenMode: stt.ListenMode.dictation,
+        partialResults: true,
+      ),
+      onResult: (result) {
+        if (!mounted) return;
+        final words = result.recognizedWords.trim();
+        final merged = words.isEmpty
+            ? _speechBaseText
+            : (_speechBaseText.isEmpty ? words : '$_speechBaseText $words');
+        _textCtrl.text = merged;
+        _textCtrl.selection = TextSelection.fromPosition(
+          TextPosition(offset: _textCtrl.text.length),
+        );
+      },
+    );
+
+    if (!mounted) return;
+    setState(() => _isListening = started);
+    if (!started) {
+      showAppNotice(
+        context,
+        'Mikrofon konnte nicht gestartet werden.',
+        type: AppNoticeType.error,
+      );
+    }
   }
 
   Future<void> _save() async {
@@ -127,10 +206,38 @@ class _NoteFormScreenState extends State<NoteFormScreen> {
                       controller: _textCtrl,
                       minLines: 3,
                       maxLines: 8,
-                      decoration: const InputDecoration(labelText: 'Notiz'),
+                      decoration: InputDecoration(
+                        labelText: 'Notiz',
+                        suffixIcon: IconButton(
+                          tooltip: _isListening
+                              ? 'Spracheingabe stoppen'
+                              : 'Spracheingabe starten',
+                          onPressed: _busy ? null : _toggleSpeech,
+                          icon: Icon(
+                            _isListening ? Icons.mic : Icons.mic_none_outlined,
+                            color: _isListening
+                                ? Theme.of(context).colorScheme.primary
+                                : null,
+                          ),
+                        ),
+                      ),
                       validator: (v) =>
                           Validators.requiredText(v, label: 'Notiz'),
                     ),
+                    if (_isListening)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Spracheingabe aktiv...',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                      ),
                     const SizedBox(height: 16),
                     Align(
                       alignment: Alignment.centerRight,

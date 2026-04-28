@@ -24,6 +24,12 @@ class SampleCatalogUnloadResult {
 }
 
 class CatalogService {
+  String? normalizeBarcode(String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) return null;
+    return trimmed.replaceAll(RegExp(r'\s+'), '').toUpperCase();
+  }
+
   Set<String> _sampleKeys() {
     return {
       for (final e in sampleCatalogEntries)
@@ -160,6 +166,51 @@ class CatalogService {
     return filtered.take(10).toList();
   }
 
+  Future<CatalogEntry?> findByBarcodeForProject({
+    required String barcode,
+    required String userId,
+    String? projectWorkgroupId,
+  }) async {
+    final normalized = normalizeBarcode(barcode);
+    if (normalized == null) return null;
+
+    final personalSnapshot = await FirebaseService.catalog
+        .where('isActive', isEqualTo: true)
+        .where('createdBy', isEqualTo: userId)
+        .where('workgroupId', isEqualTo: null)
+        .limit(200)
+        .get()
+        .timeout(const Duration(seconds: 12));
+
+    final merged = <CatalogEntry>[
+      for (final doc in personalSnapshot.docs) CatalogEntry.fromMap(doc.id, doc.data()),
+    ];
+
+    if (projectWorkgroupId != null && projectWorkgroupId.isNotEmpty) {
+      try {
+        final workgroupSnapshot = await FirebaseService.catalog
+            .where('isActive', isEqualTo: true)
+            .where('workgroupId', isEqualTo: projectWorkgroupId)
+            .limit(250)
+            .get()
+            .timeout(const Duration(seconds: 12));
+        merged.addAll(
+          workgroupSnapshot.docs
+              .map((doc) => CatalogEntry.fromMap(doc.id, doc.data())),
+        );
+      } catch (e) {
+        if (!_isPermissionDenied(e)) rethrow;
+      }
+    }
+
+    for (final entry in merged) {
+      if (normalizeBarcode(entry.barcode) == normalized) {
+        return entry;
+      }
+    }
+    return null;
+  }
+
   Future<String?> getDefaultWorkgroupIdForUser(String userId) async {
     final membership = await FirebaseService.workgroupMembers
         .where('userId', isEqualTo: userId)
@@ -173,6 +224,7 @@ class CatalogService {
   Future<void> createEntry({
     required String name,
     required String unit,
+    String? barcode,
     String? category,
     required String createdBy,
     String? workgroupId,
@@ -184,6 +236,7 @@ class CatalogService {
       'name': name.trim(),
       'nameLower': name.trim().toLowerCase(),
       'unit': unit.trim(),
+      'barcode': normalizeBarcode(barcode),
       'category': category?.trim().isEmpty == true ? null : category?.trim(),
       'createdBy': createdBy,
       'workgroupId': (workgroupId == null || workgroupId.trim().isEmpty)
@@ -199,6 +252,7 @@ class CatalogService {
     required String entryId,
     required String name,
     required String unit,
+    String? barcode,
     String? category,
     required bool isActive,
   }) {
@@ -206,6 +260,7 @@ class CatalogService {
       'name': name.trim(),
       'nameLower': name.trim().toLowerCase(),
       'unit': unit.trim(),
+      'barcode': normalizeBarcode(barcode),
       'category': category?.trim().isEmpty == true ? null : category?.trim(),
       'isActive': isActive,
       'updatedAt': FirebaseService.now(),
